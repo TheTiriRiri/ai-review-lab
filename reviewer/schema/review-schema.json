@@ -1,0 +1,152 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "criteria": {
+      "type": "object",
+      "properties": {
+        "implementationCorrectness": {
+          "type": "object",
+          "properties": {
+            "score": {
+              "type": "number",
+              "description": "Integer score from 1 (worst) to 10 (best)."
+            },
+            "rationale": {
+              "type": "string",
+              "description": "Why this score was given: concrete findings with file paths and lines."
+            }
+          },
+          "required": [
+            "score",
+            "rationale"
+          ],
+          "additionalProperties": false,
+          "description": "Does the code actually do what it claims, handling edge cases and error paths without regressions? Score 1: logic is broken, misses obvious edge or error cases, or silently regresses existing behavior. Score 10: behaves correctly across the happy path, edge cases and failure modes, with no regressions."
+        },
+        "idiomaticity": {
+          "type": "object",
+          "properties": {
+            "score": {
+              "type": "number",
+              "description": "Integer score from 1 (worst) to 10 (best)."
+            },
+            "rationale": {
+              "type": "string",
+              "description": "Why this score was given: concrete findings with file paths and lines."
+            }
+          },
+          "required": [
+            "score",
+            "rationale"
+          ],
+          "additionalProperties": false,
+          "description": "Does the code follow the language, framework and project conventions a fluent reader would expect? Score 1: fights the idioms of the stack and the established patterns of the repository; reads as foreign. Score 10: indistinguishable from well-written surrounding code; uses the right idioms naturally."
+        },
+        "complexity": {
+          "type": "object",
+          "properties": {
+            "score": {
+              "type": "number",
+              "description": "Integer score from 1 (worst) to 10 (best)."
+            },
+            "rationale": {
+              "type": "string",
+              "description": "Why this score was given: concrete findings with file paths and lines."
+            }
+          },
+          "required": [
+            "score",
+            "rationale"
+          ],
+          "additionalProperties": false,
+          "description": "Is the solution as simple as the problem allows, without needless abstraction or convolution? Score 1: over-engineered or tangled; hard to follow, with accidental complexity that obscures intent. Score 10: minimal and clear; the simplest design that solves the problem completely."
+        },
+        "testRiskCoverage": {
+          "type": "object",
+          "properties": {
+            "score": {
+              "type": "number",
+              "description": "Integer score from 1 (worst) to 10 (best)."
+            },
+            "rationale": {
+              "type": "string",
+              "description": "Why this score was given: concrete findings with file paths and lines."
+            }
+          },
+          "required": [
+            "score",
+            "rationale"
+          ],
+          "additionalProperties": false,
+          "description": "Are the meaningful behaviors and risky paths exercised by tests in proportion to their risk? Score 1: risky logic ships untested; tests are absent, trivial or assert nothing useful. Score 10: risk-weighted coverage; the parts most likely to break are tested deliberately and well."
+        },
+        "documentation": {
+          "type": "object",
+          "properties": {
+            "score": {
+              "type": "number",
+              "description": "Integer score from 1 (worst) to 10 (best)."
+            },
+            "rationale": {
+              "type": "string",
+              "description": "Why this score was given: concrete findings with file paths and lines."
+            }
+          },
+          "required": [
+            "score",
+            "rationale"
+          ],
+          "additionalProperties": false,
+          "description": "Are non-obvious decisions, public surfaces and tricky code explained where a reader would need it? Score 1: opaque; no comments or docs where they are needed, so intent must be reverse-engineered. Score 10: just enough docs and comments to explain the why, without restating the obvious."
+        },
+        "securitySafety": {
+          "type": "object",
+          "properties": {
+            "score": {
+              "type": "number",
+              "description": "Integer score from 1 (worst) to 10 (best)."
+            },
+            "rationale": {
+              "type": "string",
+              "description": "Why this score was given: concrete findings with file paths and lines."
+            }
+          },
+          "required": [
+            "score",
+            "rationale"
+          ],
+          "additionalProperties": false,
+          "description": "Does the change avoid introducing vulnerabilities, leaking secrets or handling untrusted input unsafely? Score 1: introduces an exploitable flaw, leaks secrets, or trusts untrusted input unsafely. Score 10: input is validated, secrets are handled correctly, and no new attack surface is opened."
+        }
+      },
+      "required": [
+        "implementationCorrectness",
+        "idiomaticity",
+        "complexity",
+        "testRiskCoverage",
+        "documentation",
+        "securitySafety"
+      ],
+      "additionalProperties": false
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail"
+      ],
+      "description": "Binding verdict for the whole change; the CI gate reads only this field. Return fail if implementationCorrectness <= 5, or securitySafety <= 4, or any criterion <= 3; otherwise return pass."
+    },
+    "summary": {
+      "type": "string",
+      "description": "Markdown summary for a pull request comment: lead with the verdict, then the most important findings."
+    }
+  },
+  "required": [
+    "criteria",
+    "verdict",
+    "summary"
+  ],
+  "additionalProperties": false
+}

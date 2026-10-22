@@ -17,4 +17,5 @@ Oba czytają ten sam kontrakt werdyktu (`reviewer/schema/review-schema.json`): s
 npm install
 npm test
 npm run typecheck
+npm run schema:emit   # po każdej zmianie reviewer/src/review-schema.ts; test dryfu pilnuje plików w reviewer/schema/
 ```

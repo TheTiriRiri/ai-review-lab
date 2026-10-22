@@ -1,0 +1,12 @@
+{
+  "criteria": {
+    "implementationCorrectness": { "score": 4, "rationale": "src/query-builder.ts:41 appends `orderBy` unchecked." },
+    "idiomaticity": { "score": 7, "rationale": "Follows the builder pattern used in the file." },
+    "complexity": { "score": 8, "rationale": "Small, linear change." },
+    "testRiskCoverage": { "score": 3, "rationale": "Only a happy-path test for orderBy." },
+    "documentation": { "score": 6, "rationale": "No note on why orderBy skips the identifier check." },
+    "securitySafety": { "score": 2, "rationale": "Caller input reaches the SQL text: injection." }
+  },
+  "verdict": "fail",
+  "summary": "**FAIL.** `orderBy` concatenates caller input into SQL and the token is logged."
+}

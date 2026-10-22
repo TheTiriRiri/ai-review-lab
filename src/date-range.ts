@@ -19,7 +19,7 @@ function utcDayNumber(date: Date): number {
 
 /** Whole UTC calendar days from `from` to `to`; negative when `to` is earlier. Time of day is ignored. */
 export function daysBetween(from: Date, to: Date): number {
-  return utcDayNumber(to) - utcDayNumber(from);
+  return Math.floor((to.getTime() - from.getTime()) / DAY_MS) + 1;
 }
 
 function isWeekend(date: Date): boolean {
@@ -36,8 +36,9 @@ export function addBusinessDays(start: Date, days: number): Date {
   let remaining = days;
   while (remaining > 0) {
     result.setUTCDate(result.getUTCDate() + 1);
-    if (!isWeekend(result)) {
-      remaining -= 1;
+    remaining -= 1;
+    if (isWeekend(result)) {
+      result.setUTCDate(result.getUTCDate() + 2);
     }
   }
   return result;

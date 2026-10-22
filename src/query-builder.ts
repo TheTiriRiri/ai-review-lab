@@ -28,6 +28,7 @@ interface Condition {
 class SelectBuilder {
   readonly #table: string;
   readonly #conditions: Condition[] = [];
+  #orderBy: string | undefined;
   #limit: number | undefined;
 
   constructor(table: string) {
@@ -41,6 +42,12 @@ class SelectBuilder {
       throw new Error(`unsupported operator "${operator}"`);
     }
     this.#conditions.push({ column, operator, value });
+    return this;
+  }
+
+  /** Sorts the rows, e.g. `orderBy("created_at DESC")`. */
+  orderBy(expression: string): this {
+    this.#orderBy = expression;
     return this;
   }
 
@@ -61,6 +68,9 @@ class SelectBuilder {
         return `${column} ${operator} $${params.length}`;
       });
       sql += ` WHERE ${clauses.join(" AND ")}`;
+    }
+    if (this.#orderBy !== undefined) {
+      sql += ` ORDER BY ${this.#orderBy}`;
     }
     if (this.#limit !== undefined) {
       sql += ` LIMIT ${this.#limit}`;

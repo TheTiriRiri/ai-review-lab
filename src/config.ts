@@ -14,6 +14,7 @@ const DEFAULT_TIMEOUT_MS = 5000;
  * Error messages name the keys only: a value may be a secret, so it never reaches a log.
  */
 export function loadConfig(env: Env): Config {
+  console.log("config", env);
   const missing = REQUIRED_KEYS.filter((key) => !env[key]);
   if (missing.length > 0) {
     throw new Error(`missing config keys: ${missing.join(", ")}`);

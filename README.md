@@ -17,7 +17,7 @@ Oba czytają ten sam kontrakt werdyktu (`reviewer/schema/review-schema.json`): s
 npm install
 npm test
 npm run typecheck
-npm run schema:emit   # po każdej zmianie reviewer/src/review-schema.ts; test dryfu pilnuje plików w reviewer/schema/
+npm run schema:emit   # po każdej zmianie reviewer/src/review-schema.ts; test dryfu pilnuje plików w reviewer/schema/ i reviewer/evals/prompts/
 ```
 
 ## Recenzent wariantu 2 (`reviewer/`)
@@ -30,3 +30,11 @@ npm run build                                                     # reviewer/dis
 ```
 
 Klucz `OPENROUTER_API_KEY` w `reviewer/.env` (gitignorowany) albo w środowisku; domyślny model to `z-ai/glm-5.3` (`REVIEW_MODEL` lub `--model` go podmienia). Na stdout trafia jeden JSON: sześć ocen, `verdict`, `summary` i `meta` (model, czas, koszt z OpenRouter, tokeny, wykluczone pliki); logi idą na stderr. Testy agenta (`npm test`) używają atrapy modelu z `ai/test` i nie wykonują żadnych zapytań HTTP.
+
+## Evale promptfoo (`reviewer/evals/`)
+
+```bash
+npm run eval   # prompt recenzenta na trzech modelach OpenRouter i trzech fixturach; macierz w terminalu, wynik w reviewer/evals/out/results.json
+```
+
+Prompt (`reviewer/evals/prompts/review.txt`) generuje `schema:emit` z tego samego źródła co kontrakt CI. Klucz jak wyżej, z `reviewer/.env`; promptfoo czyta ten plik sam. Fixtury w `reviewer/evals/fixtures/` nie mogą zawierać `{{`, `{%` ani `{#`, bo promptfoo renderuje zmienne jako szablony Nunjucks; pilnuje tego test. Wyników nie oglądamy przez `promptfoo view`, bo uruchamia lokalny serwer WWW.

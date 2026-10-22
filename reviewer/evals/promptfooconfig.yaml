@@ -1,0 +1,62 @@
+# promptfoo evals for the review prompt: the same fixture diffs on three OpenRouter models.
+# Run from the repo root: npm run eval (OPENROUTER_API_KEY from reviewer/.env or the environment).
+# Results: the matrix in the terminal and evals/out/results.json. Never `promptfoo view`: it starts a local web server.
+# prompts/review.txt is generated from src/review-schema.ts (npm run schema:emit), like the CI contract files.
+# promptfoo renders vars as Nunjucks templates, so fixture diffs carry no {{, {% or {# (evals/fixtures.test.js);
+# PROMPTFOO_DISABLE_TEMPLATING is not an option, it would leave {{diff}} in the prompt unfilled.
+description: Code review prompt, three models, three fixture diffs
+
+providers:
+  - id: openrouter:z-ai/glm-5.3 # the variant 2 default
+  - id: openrouter:anthropic/claude-sonnet-5.5 # the model family variant 1 runs on
+  - id: openrouter:deepseek/deepseek-v4.1-flash # the cheap candidate
+  # Optional fourth: anthropic:messages:claude-sonnet-5-5 (ANTHROPIC_API_KEY), direct versus through OpenRouter.
+
+prompts:
+  - file://prompts/review.txt
+
+defaultTest:
+  options:
+    provider: openrouter:anthropic/claude-sonnet-5.5 # llm-rubric grader
+    transform: file://transforms/strip-fences.js
+
+tests:
+  - description: React 16 to 19 migration with three planted flaws
+    vars:
+      diff: file://fixtures/react19-migration.diff
+    assert:
+      - type: is-json
+        value: file://../schema/review-schema.json
+      - type: llm-rubric
+        value: >-
+          The review names all three planted flaws and says why each breaks the component: the effect does not
+          re-run when userId changes, the presence subscription is never cleaned up, and the interval callback
+          keeps a stale count.
+      - type: javascript
+        value: "const r = typeof output === 'string' ? JSON.parse(output) : output; return r.verdict === 'fail';"
+
+  - description: SQL injection through orderBy and a logged API token (fixture PR 2)
+    vars:
+      diff: file://fixtures/sql-injection.diff
+    assert:
+      - type: is-json
+        value: file://../schema/review-schema.json
+      - type: llm-rubric
+        value: >-
+          The review rejects the change, points to the SQL injection through the unchecked ORDER BY expression,
+          and points to the API token that loadConfig now writes to the log.
+      - type: javascript
+        value: >-
+          const r = typeof output === 'string' ? JSON.parse(output) : output;
+          return r.verdict === 'fail' && r.criteria.securitySafety.score <= 3;
+
+  - description: Clean change, negative counts in addBusinessDays (fixture PR 1)
+    vars:
+      diff: file://fixtures/clean-business-days.diff
+    assert:
+      - type: is-json
+        value: file://../schema/review-schema.json
+      - type: javascript
+        value: >-
+          const r = typeof output === 'string' ? JSON.parse(output) : output;
+          return r.verdict === 'pass' && Object.values(r.criteria).every((c) => c.score >= 6);

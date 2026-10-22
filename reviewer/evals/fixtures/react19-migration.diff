@@ -1,0 +1,65 @@
+diff --git a/src/components/UserPresence.jsx b/src/components/UserPresence.jsx
+index 8b4790c..6db063b 100644
+--- a/src/components/UserPresence.jsx
++++ b/src/components/UserPresence.jsx
+@@ -1,41 +1,27 @@
+-import React from "react";
++import { useEffect, useState } from "react";
+ import { fetchUser } from "../lib/api";
+ import { presence } from "../lib/presence";
+ 
+ /** Shows whether a user is online and how long this page has been open. */
+-export default class UserPresence extends React.Component {
+-  state = { user: null, online: false, count: 0 };
++export default function UserPresence({ userId }) {
++  const [user, setUser] = useState(null);
++  const [online, setOnline] = useState(false);
++  const [count, setCount] = useState(0);
+ 
+-  componentDidMount() {
+-    this.load();
+-    this.unsubscribe = presence.subscribe(this.props.userId, (online) => this.setState({ online }));
+-    this.timer = setInterval(() => this.setState((state) => ({ count: state.count + 1 })), 1000);
+-  }
++  useEffect(() => {
++    fetchUser(userId).then(setUser);
++    presence.subscribe(userId, setOnline);
++  }, []);
+ 
+-  componentDidUpdate(prevProps) {
+-    if (prevProps.userId !== this.props.userId) {
+-      this.unsubscribe();
+-      this.load();
+-      this.unsubscribe = presence.subscribe(this.props.userId, (online) => this.setState({ online }));
+-    }
+-  }
++  useEffect(() => {
++    const timer = setInterval(() => setCount(count + 1), 1000);
++    return () => clearInterval(timer);
++  }, []);
+ 
+-  componentWillUnmount() {
+-    this.unsubscribe();
+-    clearInterval(this.timer);
+-  }
+-
+-  load() {
+-    fetchUser(this.props.userId).then((user) => this.setState({ user }));
+-  }
+-
+-  render() {
+-    const { user, online, count } = this.state;
+-    if (!user) return <p>Loading…</p>;
+-    return (
+-      <p>
+-        {user.name} is {online ? "online" : "offline"} ({count}s on this page)
+-      </p>
+-    );
+-  }
++  if (!user) return <p>Loading…</p>;
++  return (
++    <p>
++      {user.name} is {online ? "online" : "offline"} ({count}s on this page)
++    </p>
++  );
+ }

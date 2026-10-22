@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "eval": "PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 promptfoo eval -c evals/promptfooconfig.yaml --no-cache -o evals/out/results.json",
     "review": "node --env-file-if-exists=.env --import tsx src/cli.ts",
     "schema:emit": "node --import tsx scripts/emit-schema.ts"
   },
@@ -16,6 +17,7 @@
   },
   "devDependencies": {
     "@types/node": "^22",
+    "promptfoo": "0.124.1",
     "tsx": "^4",
     "typescript": "^6"
   }

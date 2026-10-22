@@ -8,6 +8,7 @@ import {
   REVIEWER_PROMPT,
   ReviewResult,
   VERDICT_RULE,
+  renderEvalPrompt,
   renderSchemaFile,
 } from "./review-schema.js";
 
@@ -82,6 +83,22 @@ describe("REVIEWER_PROMPT", () => {
   });
 });
 
+describe("renderEvalPrompt", () => {
+  it("carries the rubric, then the schema the raw promptfoo providers do not enforce, then one diff slot", () => {
+    const prompt = renderEvalPrompt();
+    const rubricEnd = prompt.indexOf(REVIEWER_PROMPT) + REVIEWER_PROMPT.length;
+    const schemaAt = prompt.indexOf(JSON.stringify(REVIEW_JSON_SCHEMA));
+    expect(prompt.indexOf(REVIEWER_PROMPT)).toBe(0);
+    expect(schemaAt).toBeGreaterThan(rubricEnd);
+    expect(prompt.match(/\{\{\s*diff\s*\}\}/g)).toHaveLength(1);
+    expect(prompt.indexOf("{{diff}}")).toBeGreaterThan(schemaAt);
+  });
+
+  it("keeps the schema free of {{ and {%, which promptfoo would read as Nunjucks tags", () => {
+    expect(JSON.stringify(REVIEW_JSON_SCHEMA)).not.toMatch(/\{\{|\{%/);
+  });
+});
+
 describe("committed contract files", () => {
   it("schema/review-schema.json matches the module (run npm run schema:emit after a change)", () => {
     const committed = readFileSync(new URL("../schema/review-schema.json", import.meta.url), "utf8");
@@ -91,5 +108,10 @@ describe("committed contract files", () => {
   it("schema/reviewer-prompt.md matches the module (run npm run schema:emit after a change)", () => {
     const committed = readFileSync(new URL("../schema/reviewer-prompt.md", import.meta.url), "utf8");
     expect(committed).toBe(`${REVIEWER_PROMPT}\n`);
+  });
+
+  it("evals/prompts/review.txt matches the module (run npm run schema:emit after a change)", () => {
+    const committed = readFileSync(new URL("../evals/prompts/review.txt", import.meta.url), "utf8");
+    expect(committed).toBe(renderEvalPrompt());
   });
 });

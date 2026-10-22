@@ -116,3 +116,21 @@ export const REVIEWER_PROMPT = [
 export function renderSchemaFile(): string {
   return `${JSON.stringify(REVIEW_JSON_SCHEMA, null, 2)}\n`;
 }
+
+/**
+ * The promptfoo prompt (evals/prompts/review.txt), written by `npm run schema:emit`. Raw `openrouter:` providers
+ * do not enforce the schema, so it travels in the text; `{{diff}}` is the promptfoo variable, framed like the agent.
+ */
+export function renderEvalPrompt(): string {
+  return [
+    REVIEWER_PROMPT,
+    "",
+    "Answer with a single JSON object that matches this JSON Schema, with no code fences and no text around it:",
+    JSON.stringify(REVIEW_JSON_SCHEMA),
+    "",
+    "<diff>",
+    "{{diff}}",
+    "</diff>",
+    "",
+  ].join("\n");
+}

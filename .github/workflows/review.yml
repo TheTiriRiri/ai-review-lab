@@ -1,0 +1,77 @@
+# Variant 2: the reviewer agent from reviewer/ (composite action .github/actions/ai-reviewer) reviews every
+# pull request to main. Same skeleton as claude-review.yml, so the two variants compare on the same pull requests:
+# the same diff, the same comment renderer, the same gate; labels ai-cr:* here, claude-cr:* there.
+name: AI Code Review
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled]
+
+permissions: {}
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    # Same-repository pull requests only, and on `labeled` only for the ai-cr:review retry label.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.event.action != 'labeled' || github.event.label.name == 'ai-cr:review')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write # labels live on the issues API
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the diff needs the base branch history
+
+      - name: Compute diff
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        # A 1 MB guard only: the reviewer cuts at 200 KB on a line boundary and reports it in meta.truncated.
+        run: |
+          git diff "origin/$BASE_REF...HEAD" -- . ':(exclude)package-lock.json' | head -c 1000000 > "$RUNNER_TEMP/pr.diff"
+          test -s "$RUNNER_TEMP/pr.diff" || { echo "::error::empty diff"; exit 1; }
+          wc -c "$RUNNER_TEMP/pr.diff"
+
+      - name: AI review
+        id: review
+        uses: ./.github/actions/ai-reviewer
+        with:
+          api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          pr-title: ${{ github.event.pull_request.title }}
+          pr-body: ${{ github.event.pull_request.body }}
+          diff-file: ${{ runner.temp }}/pr.diff
+
+      - name: Comment and label
+        if: always() && steps.review.outputs.verdict != ''
+        env:
+          VERDICT: ${{ steps.review.outputs.verdict }}
+          REVIEW_FILE: ${{ steps.review.outputs.review-file }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          model=$(jq -r '.meta.model' "$REVIEW_FILE")
+          node .github/scripts/render-comment.mjs \
+            --title "AI Code Review (ai-reviewer, $model)" \
+            --run-url "$RUN_URL" "$REVIEW_FILE" > "$RUNNER_TEMP/comment.md"
+          gh pr comment "$PR" --body-file "$RUNNER_TEMP/comment.md"
+          gh label create ai-cr:passed --color 0E8A16 --force
+          gh label create ai-cr:failed --color B60205 --force
+          if [ "$VERDICT" = pass ]; then add=ai-cr:passed; drop=ai-cr:failed; else add=ai-cr:failed; drop=ai-cr:passed; fi
+          gh pr edit "$PR" --add-label "$add" --remove-label "$drop"
+          gh pr edit "$PR" --remove-label ai-cr:review || true
+
+      - name: Gate on verdict
+        env:
+          VERDICT: ${{ steps.review.outputs.verdict }}
+        run: |
+          test "$VERDICT" = pass || { echo "::error::AI review verdict: ${VERDICT:-missing}"; exit 1; }

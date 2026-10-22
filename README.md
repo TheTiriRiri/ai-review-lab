@@ -19,3 +19,14 @@ npm test
 npm run typecheck
 npm run schema:emit   # po każdej zmianie reviewer/src/review-schema.ts; test dryfu pilnuje plików w reviewer/schema/
 ```
+
+## Recenzent wariantu 2 (`reviewer/`)
+
+```bash
+git diff main | npm run review                                    # diff ze stdin
+npm run review -- --file reviewer/fixtures/sample.diff            # albo z pliku; --model <id OpenRouter>, --title <tekst>
+npm run review -- --file x.diff --fail-on-verdict                 # kod wyjścia 1 przy verdict: fail
+npm run build                                                     # reviewer/dist/, którego używa composite action
+```
+
+Klucz `OPENROUTER_API_KEY` w `reviewer/.env` (gitignorowany) albo w środowisku; domyślny model to `z-ai/glm-5.3` (`REVIEW_MODEL` lub `--model` go podmienia). Na stdout trafia jeden JSON: sześć ocen, `verdict`, `summary` i `meta` (model, czas, koszt z OpenRouter, tokeny, wykluczone pliki); logi idą na stderr. Testy agenta (`npm test`) używają atrapy modelu z `ai/test` i nie wykonują żadnych zapytań HTTP.

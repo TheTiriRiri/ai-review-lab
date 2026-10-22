@@ -13,6 +13,8 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json && tsc -p reviewer/tsconfig.json",
+    "build": "npm run -w reviewer build",
+    "review": "npm run -w reviewer review --",
     "schema:emit": "npm run -w reviewer schema:emit"
   },
   "devDependencies": {

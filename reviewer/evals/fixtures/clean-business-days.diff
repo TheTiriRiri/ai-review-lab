@@ -1,0 +1,50 @@
+diff --git a/src/date-range.ts b/src/date-range.ts
+index ca6a64c..50b6f2c 100644
+--- a/src/date-range.ts
++++ b/src/date-range.ts
+@@ -27,15 +27,17 @@ function isWeekend(date: Date): boolean {
+   return day === 0 || day === 6;
+ }
+ 
+-/** Adds `days` business days (Monday to Friday) to `start`, returning a new date. */
++/**
++ * Adds `days` business days (Monday to Friday) to `start`, returning a new date.
++ * A negative count steps backward. Weekend days are skipped in both directions, so from a
++ * weekend start one business day forward is the next Monday and one back is the previous Friday.
++ */
+ export function addBusinessDays(start: Date, days: number): Date {
+-  if (days < 0) {
+-    throw new Error(`days must not be negative, got ${days}`);
+-  }
++  const step = days < 0 ? -1 : 1;
+   const result = new Date(start.getTime());
+-  let remaining = days;
++  let remaining = Math.abs(days);
+   while (remaining > 0) {
+-    result.setUTCDate(result.getUTCDate() + 1);
++    result.setUTCDate(result.getUTCDate() + step);
+     if (!isWeekend(result)) {
+       remaining -= 1;
+     }
+diff --git a/tests/date-range.test.ts b/tests/date-range.test.ts
+index 7acdfd9..f531797 100644
+--- a/tests/date-range.test.ts
++++ b/tests/date-range.test.ts
+@@ -60,7 +60,15 @@ describe("addBusinessDays", () => {
+     expect(start.toISOString()).toBe("2026-10-22T00:00:00.000Z");
+   });
+ 
+-  it("rejects a negative count", () => {
+-    expect(() => addBusinessDays(parseIsoDate("2026-10-22"), -1)).toThrow(/negative/);
++  it("steps back over the weekend for a negative count", () => {
++    expect(addBusinessDays(parseIsoDate("2026-10-26"), -1).toISOString()).toBe("2026-10-23T00:00:00.000Z");
++  });
++
++  it("subtracts five business days across one weekend", () => {
++    expect(addBusinessDays(parseIsoDate("2026-10-28"), -5).toISOString()).toBe("2026-10-21T00:00:00.000Z");
++  });
++
++  it("counts back to the previous Friday from a weekend start", () => {
++    expect(addBusinessDays(parseIsoDate("2026-10-25"), -1).toISOString()).toBe("2026-10-23T00:00:00.000Z");
+   });
+ });

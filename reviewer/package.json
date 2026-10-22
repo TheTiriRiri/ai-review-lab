@@ -5,9 +5,13 @@
   "description": "Code review agent: one review contract shared by both CI variants and the evals",
   "type": "module",
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "review": "node --env-file-if-exists=.env --import tsx src/cli.ts",
     "schema:emit": "node --import tsx scripts/emit-schema.ts"
   },
   "dependencies": {
+    "@openrouter/ai-sdk-provider": "^3.1.0",
+    "ai": "^7.0.148",
     "zod": "^4"
   },
   "devDependencies": {

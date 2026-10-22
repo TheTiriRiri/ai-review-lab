@@ -1,0 +1,64 @@
+diff --git a/src/config.ts b/src/config.ts
+index daa0d1d..80f1c13 100644
+--- a/src/config.ts
++++ b/src/config.ts
+@@ -14,6 +14,7 @@ const DEFAULT_TIMEOUT_MS = 5000;
+  * Error messages name the keys only: a value may be a secret, so it never reaches a log.
+  */
+ export function loadConfig(env: Env): Config {
++  console.log("config", env);
+   const missing = REQUIRED_KEYS.filter((key) => !env[key]);
+   if (missing.length > 0) {
+     throw new Error(`missing config keys: ${missing.join(", ")}`);
+diff --git a/src/query-builder.ts b/src/query-builder.ts
+index 2880214..ea8309f 100644
+--- a/src/query-builder.ts
++++ b/src/query-builder.ts
+@@ -28,6 +28,7 @@ interface Condition {
+ class SelectBuilder {
+   readonly #table: string;
+   readonly #conditions: Condition[] = [];
++  #orderBy: string | undefined;
+   #limit: number | undefined;
+ 
+   constructor(table: string) {
+@@ -44,6 +45,12 @@ class SelectBuilder {
+     return this;
+   }
+ 
++  /** Sorts the rows, e.g. `orderBy("created_at DESC")`. */
++  orderBy(expression: string): this {
++    this.#orderBy = expression;
++    return this;
++  }
++
+   limit(count: number): this {
+     if (!Number.isInteger(count) || count < 1) {
+       throw new Error(`limit must be a positive integer, got ${count}`);
+@@ -62,6 +69,9 @@ class SelectBuilder {
+       });
+       sql += ` WHERE ${clauses.join(" AND ")}`;
+     }
++    if (this.#orderBy !== undefined) {
++      sql += ` ORDER BY ${this.#orderBy}`;
++    }
+     if (this.#limit !== undefined) {
+       sql += ` LIMIT ${this.#limit}`;
+     }
+diff --git a/tests/query-builder.test.ts b/tests/query-builder.test.ts
+index aa21556..7001be0 100644
+--- a/tests/query-builder.test.ts
++++ b/tests/query-builder.test.ts
+@@ -21,6 +21,12 @@ describe("select", () => {
+     );
+   });
+ 
++  it("sorts by the given expression before the limit", () => {
++    expect(select("users").orderBy("created_at DESC").limit(10).build().sql).toBe(
++      "SELECT * FROM users ORDER BY created_at DESC LIMIT 10",
++    );
++  });
++
+   it("rejects a limit that is not a positive integer", () => {
+     expect(() => select("users").limit(0)).toThrow(/limit/);
+     expect(() => select("users").limit(1.5)).toThrow(/limit/);

@@ -41,7 +41,8 @@ runs:
 
     - name: Build reviewer
       shell: bash
-      run: npm ci --ignore-scripts && npm run -w reviewer build
+      # --omit=optional skips the platform binaries in the lockfile (promptfoo's among them); tsc and the run need none.
+      run: npm ci --ignore-scripts --omit=optional && npm run -w reviewer build
 
     - name: Run reviewer
       id: agent

@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { runReview } from "./run.js";
+import { MAX_DIFF_BYTES, runReview } from "./run.js";
 import { mockModel, passingReview } from "./testing/mock-model.js";
 
 const SOURCE = "diff --git a/src/a.ts b/src/a.ts\n--- a/src/a.ts\n+++ b/src/a.ts\n@@ -1 +1 @@\n+export const a = 1;\n";
@@ -57,6 +57,16 @@ describe("runReview", () => {
     const model = mockModel(JSON.stringify(passingReview));
     await expect(runReview({ diffSource: diffFile(LOCKFILE), title: "Bump lockfile", model })).rejects.toThrow(
       /nothing to review/,
+    );
+    expect(model.doGenerateCalls).toHaveLength(0);
+  });
+
+  // trimDiff cuts after the last full line that fits, so a first line over the cap leaves nothing, and no exclusion did it.
+  it("blames the byte cap, not the exclusion, when the first line of the diff is longer than the cap", async () => {
+    const model = mockModel(JSON.stringify(passingReview));
+    const source = diffFile(`+${"x".repeat(MAX_DIFF_BYTES)}\n`);
+    await expect(runReview({ diffSource: source, title: "Add a", model })).rejects.toThrow(
+      `nothing to review in ${source}: its first line is longer than the ${MAX_DIFF_BYTES}-byte cap`,
     );
     expect(model.doGenerateCalls).toHaveLength(0);
   });

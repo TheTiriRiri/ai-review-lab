@@ -35,7 +35,11 @@ export interface ReviewReport extends ReviewResult {
 export async function runReview({ diffSource, title, body, model, log = () => {} }: RunOptions): Promise<ReviewReport> {
   const trimmed = trimDiff(await readDiff(diffSource), { maxBytes: MAX_DIFF_BYTES, excludeGlobs: EXCLUDE_GLOBS });
   if (trimmed.diff.trim() === "") {
-    throw new Error(`nothing to review in ${diffSource} once ${EXCLUDE_GLOBS.join(", ")} is excluded`);
+    // The cut keeps whole lines only: after a truncation, an empty diff means its first line did not fit.
+    const reason = trimmed.truncated
+      ? `: its first line is longer than the ${MAX_DIFF_BYTES}-byte cap`
+      : ` once ${EXCLUDE_GLOBS.join(", ")} is excluded`;
+    throw new Error(`nothing to review in ${diffSource}${reason}`);
   }
   log(`reviewing ${Buffer.byteLength(trimmed.diff)} bytes of diff${trimmed.truncated ? " (truncated)" : ""}`);
 

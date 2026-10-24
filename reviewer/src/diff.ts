@@ -18,7 +18,11 @@ interface FileSection {
   text: string;
 }
 
-const FILE_HEADER = /^diff --git a\/.+? b\/(.+)$/;
+// git quotes a path with a non-ASCII byte, a double quote, a backslash or a control character (the default
+// core.quotePath): "b/za\305\274.ts", C escapes plus octal bytes that spell UTF-8. Either side may be quoted.
+const QUOTED_PATH = String.raw`"(?:[^"\\]|\\.)*"`;
+const FILE_HEADER = new RegExp(String.raw`^diff --git (?:${QUOTED_PATH}|a/.+?) (${QUOTED_PATH}|b/.+)$`);
+const C_ESCAPES: Record<string, string> = { a: "\x07", b: "\b", t: "\t", n: "\n", v: "\v", f: "\f", r: "\r" };
 const NEWLINE = 0x0a;
 
 /** Reads a diff from a file, or from standard input when `source` is "stdin". */
@@ -34,14 +38,34 @@ export async function readDiff(source: string, stdin: AsyncIterable<Buffer> = pr
   return Buffer.concat(chunks).toString("utf8");
 }
 
-/** Splits a diff at its `diff --git` headers; text before the first header is a section without a path. */
+function unquote(quoted: string): string {
+  const parts: Buffer[] = [];
+  for (const [, octal, escaped, plain] of quoted.slice(1, -1).matchAll(/\\([0-7]{3})|\\(.)|([^\\]+)/gs)) {
+    if (octal !== undefined) parts.push(Buffer.from([Number.parseInt(octal, 8)]));
+    else if (escaped !== undefined) parts.push(Buffer.from(C_ESCAPES[escaped] ?? escaped, "utf8"));
+    else parts.push(Buffer.from(plain ?? "", "utf8"));
+  }
+  return Buffer.concat(parts).toString("utf8");
+}
+
+/** The new-side path of a `diff --git` line, or undefined when the line cannot be read. */
+function headerPath(line: string): string | undefined {
+  const target = FILE_HEADER.exec(line)?.[1];
+  const path = target?.startsWith('"') ? unquote(target) : target;
+  return path?.startsWith("b/") ? path.slice(2) : undefined;
+}
+
+/**
+ * Splits a diff at every `diff --git` line, so no file can hide inside the previous one. Text before the first
+ * header, and a file whose header cannot be read, get no path, so no exclude glob ever drops them.
+ */
 function splitFiles(diff: string): FileSection[] {
   const sections: FileSection[] = [];
   let current: FileSection | undefined;
   for (const line of diff.split(/(?<=\n)/)) {
-    const header = FILE_HEADER.exec(line.replace(/\r?\n$/, ""));
-    if (header || !current) {
-      current = { path: header?.[1], text: "" };
+    const header = line.replace(/\r?\n$/, "");
+    if (header.startsWith("diff --git ") || !current) {
+      current = { path: headerPath(header), text: "" };
       sections.push(current);
     }
     current.text += line;

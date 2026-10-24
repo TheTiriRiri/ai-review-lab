@@ -8,12 +8,14 @@ export interface ReviewInput {
 }
 
 // A closing tag inside untrusted text would end its block early and let the rest read as prompt text. The match
-// stops at the name, so `</diff >`, `< /diff>` and `</diff x>` count too; only the slash is escaped, the text stays.
-const CLOSING_TAG = /<\s*\/\s*(?:pr_title|pr_body|diff)\b/gi;
+// stops at the name, so `</diff >`, `< /diff>` and `</diff x>` count too, as do a tag split by a zero-width
+// character, `<//diff>` and fullwidth brackets; only the first slash is escaped, the text stays.
+const GAP = String.raw`[\s\u00ad\u200b-\u200d\u2060]*`;
+const CLOSING_TAG = new RegExp(String.raw`[<\uff1c]${GAP}[/\uff0f]+${GAP}(?:pr_title|pr_body|diff)\b`, "gi");
 
 function block(tag: string, text: string): string {
   const content = (text.endsWith("\n") ? text.slice(0, -1) : text).replace(CLOSING_TAG, (closing) =>
-    closing.replace("/", "\\/"),
+    closing.replace(/[/\uff0f]/, "\\$&"),
   );
   return `<${tag}>\n${content}\n</${tag}>`;
 }

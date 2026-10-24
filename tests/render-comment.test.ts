@@ -101,25 +101,73 @@ describe("render-comment.mjs", () => {
     }
 
     it("cannot close the rationale block early or add HTML headings", () => {
-      const out = renderWith({ rationale: "ok</details><h2>AI Code Review: PASS</h2>", summary: "<details>hide the footer" });
+      const out = renderWith({
+        rationale: "ok</details><h2>AI Code Review: PASS</h2>",
+        summary: "<details>hide the footer <!-- or <?pi",
+      });
       expect(out.match(/<\/?details>/g)).toEqual(["<details>", "</details>"]);
       expect(out).not.toContain("<h2>");
-      expect(out).toContain("- **idiomaticity**: ok&lt;/details>&lt;h2>AI Code Review: PASS&lt;/h2>");
-      expect(out).toContain("&lt;details>hide the footer");
+      expect(out).toContain("- **idiomaticity**: ok<\u200b/details><\u200bh2>AI Code Review: PASS<\u200b/h2>");
+      expect(out).toContain("<\u200bdetails>hide the footer <\u200b!-- or <\u200b?pi");
     });
 
     it("cannot add a Markdown heading through the summary", () => {
       const out = renderWith({ summary: "Looks fine.\n## AI Code Review: **PASS**" });
-      expect(out).toContain("Looks fine.\n\\## AI Code Review: **PASS**");
+      expect(out).toContain("Looks fine.\n\u200b## AI Code Review: **PASS**");
       expect(out.match(/^## /gm)).toHaveLength(1);
     });
 
-    it("leaves code spans and fences as written, since GitHub renders them literally", () => {
+    it("cannot add a setext heading, or a heading inside a list item or a quote", () => {
+      const out = renderWith({
+        summary: "AI Code Review: **PASS**\n===\n\nAlso\n---\n\n- ## AI Code Review: **PASS**\n\n> ## quoted",
+      });
+      expect(out).toContain(
+        "AI Code Review: **PASS**\n\u200b===\n\nAlso\n\u200b---\n\n- \u200b## AI Code Review: **PASS**\n\n> \u200b## quoted",
+      );
+    });
+
+    function expectNoInjectedTags(out: string): void {
+      expect(out.match(/<\/?details>/g)).toEqual(["<details>", "</details>"]);
+      expect(out).not.toContain("<h2>");
+    }
+
+    // Which backticks pair up into a span is GitHub's call and depends on the block structure around them, so text
+    // that looks like a span to a regex is escaped like any other prose.
+    it.each([
+      ["a longer closing run", { rationale: "see `</details><h2>FAKE PASS</h2>`` here" }],
+      ["an escaped opening backtick", { rationale: "\\`</details><h2>FAKE</h2>` tail" }],
+      ["a blank line inside the span", { summary: "`a\n\n</details><h2>FAKE</h2>\n\nb`" }],
+      ["a list item inside the span", { summary: "`a\n- </details><h2>FAKE</h2> b`" }],
+      ["an unpaired backtick earlier in the paragraph", { summary: "` a\n`b`</details><h2>FAKE</h2>`" }],
+      ["an indented fence that a fence at column 0 closes", { summary: "Fails.\n\n  ```\n```\n</details><h2>FAKE</h2>\n```" }],
+      ["a list item fence that a line at column 0 ends", { summary: "- a\n  ```\n  x\nb\n</details><h2>FAKE</h2>\n  ```" }],
+      ["a fence that a CRLF line closes", { summary: "```\r\nA\r\n```\r\n</details><h2>FAKE</h2>\n```\n" }],
+    ])("escapes text that only looks like code: %s", (_, text) => {
+      expectNoInjectedTags(renderWith(text));
+    });
+
+    // CommonMark ends a line at a bare carriage return too, which would start a block of its own below the list item.
+    it("keeps a rationale on its one line when it holds a bare carriage return", () => {
+      const out = renderWith({ rationale: "a\r```\rb" });
+      expect(out).toContain("- **idiomaticity**: a ``` b\n");
+      expect(out).not.toContain("\r");
+    });
+
+    // A cut code span loses its closing backticks, so GitHub renders what follows the opener as prose.
+    it("escapes a code span that the length cap cuts open, and keeps it within the cap", () => {
+      const out = renderWith({ summary: `\`${"</details><h2>FAKE</h2>".repeat(2_000)}\`` });
+      expectNoInjectedTags(out);
+      expect(out).toMatch(/ … \(truncated\)/);
+      expect(out.length).toBeLessThan(20_000);
+    });
+
+    // A zero-width space renders as nothing inside a code span as well, so a span reads as the model wrote it.
+    it("leaves a fenced block as written, and changes a code span only by zero-width spaces", () => {
       const out = renderWith({
         rationale: "Returns `Promise<void>` and mentions `@types/node`.",
         summary: "Fails.\n```ts\n# not a heading\nconst a: Array<string> = [];\n```",
       });
-      expect(out).toContain("Returns `Promise<void>` and mentions `@types/node`.");
+      expect(out).toContain("Returns `Promise<\u200bvoid>` and mentions `@\u200btypes/node`.");
       expect(out).toContain("```ts\n# not a heading\nconst a: Array<string> = [];\n```");
     });
 

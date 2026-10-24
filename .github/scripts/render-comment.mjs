@@ -35,31 +35,69 @@ function parseArgs(argv) {
 // Six rationales and the summary at these caps stay well under it.
 const MAX_RATIONALE = 4_000;
 const MAX_SUMMARY = 16_000;
-const CODE = /(`+)[\s\S]*?\1/g;
+// A backtick fence (no backtick after it on its line) or a tilde fence, opened at column 0.
+const FENCE_OPEN = /^(`{3,}(?=[^`\n]*\n?$)|~{3,})/;
+// A line that could open or close a fence in some container: only indentation and quote or list markers before it.
+const FENCE_LIKE = /^[ \t]*(?:(?:>|[-+*]|\d{1,9}[.)])[ \t]*)*(?:`{3,}|~{3,})/;
+// The container markers (quote, bullet, ordered item) a heading may follow on its line.
+const BLOCK_PREFIX = String.raw`(?:[ \t]*(?:>|[-+*]|\d{1,9}[.)]))*[ \t]*`;
+const ATX_HEADING = new RegExp(String.raw`^(${BLOCK_PREFIX})(?=#{1,6}(?:[ \t]|$))`, "gm");
+const SETEXT_UNDERLINE = /^((?:[ \t]*>)*[ \t]*)(?=(?:=+|-+)[ \t]*$)/gm;
 
+// CommonMark ends a line at \n, \r\n and a bare \r alike.
 function oneLine(text) {
-  return String(text).replace(/\s*\n\s*/g, " ").trim();
+  return String(text).replace(/\s*[\r\n]\s*/g, " ").trim();
 }
 
-// The model writes what the diff under review steers it to, so its text is untrusted here. Outside code, where
-// GitHub renders it, HTML tags (a </details> that ends our block, an <h2> that fakes a verdict) and headings are
-// escaped, and an @mention gets a zero-width space so it notifies nobody. Code spans and fences render literally.
+// The model writes what the diff under review steers it to, so its text is untrusted here. A zero-width space goes
+// after a `<` that starts raw HTML (a </details> that ends our block, an <h2> that fakes a verdict), before a line
+// that would be a heading, and after the @ of a mention, which then notifies nobody. Which backticks pair up into a
+// code span depends on the block structure around them, so this does not try to tell spans from prose: the space
+// renders as nothing inside code too.
 function escapeProse(text) {
   return text
-    .replace(/<(?=[A-Za-z/!])/g, "&lt;")
-    .replace(/^( {0,3})#/gm, "$1\\#")
+    .replace(/<(?=[A-Za-z/!?])/g, "<\u200b")
+    .replace(ATX_HEADING, "$1\u200b")
+    .replace(SETEXT_UNDERLINE, "$1\u200b")
     .replace(/(^|[^\w])@(?=[A-Za-z0-9])/g, "$1@\u200b");
+}
+
+// Splits text into fenced blocks, kept as written, and the prose around them. Only when every line that could open
+// or close a fence starts at column 0 does GitHub pair them as this does, whatever lists, quotes or paragraphs
+// surround them (a fence at column 0 ends each). Otherwise all of it counts as prose, which costs only invisible
+// characters inside the code.
+function fencedParts(text) {
+  const lines = text.split(/(?<=\n)/);
+  if (lines.some((line) => FENCE_LIKE.test(line) && !/^(?:`{3,}|~{3,})/.test(line))) return [{ code: false, text }];
+  const parts = [];
+  let prose = "";
+  for (let i = 0; i < lines.length; i += 1) {
+    const fence = FENCE_OPEN.exec(lines[i])?.[1];
+    const closing = fence && new RegExp(`^${fence[0]}{${fence.length},}[ \\t]*\\n?$`);
+    const end = closing ? lines.findIndex((line, j) => j > i && closing.test(line)) : -1;
+    if (end === -1) {
+      prose += lines[i];
+    } else {
+      parts.push({ code: false, text: prose }, { code: true, text: lines.slice(i, end + 1).join("") });
+      prose = "";
+      i = end;
+    }
+  }
+  parts.push({ code: false, text: prose });
+  return parts;
 }
 
 function untrusted(text, max) {
   let out = "";
-  let last = 0;
-  for (const match of text.matchAll(CODE)) {
-    out += escapeProse(text.slice(last, match.index)) + match[0];
-    last = match.index + match[0].length;
+  for (const { code, text: part } of fencedParts(text.replace(/\r\n?/g, "\n"))) {
+    const safe = code ? part : escapeProse(part);
+    if (out.length + safe.length > max) {
+      // Escaped text stays safe wherever it is cut; a cut fence loses its closing line, so it is escaped too.
+      return `${out}${escapeProse(part).slice(0, max - out.length)} … (truncated)`;
+    }
+    out += safe;
   }
-  out += escapeProse(text.slice(last));
-  return out.length <= max ? out : `${out.slice(0, max)} … (truncated)`;
+  return out;
 }
 
 // Both workflows take the verdict from the scores (VERDICT_RULE); the comment says so when that overrules the model.

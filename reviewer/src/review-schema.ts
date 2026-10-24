@@ -19,38 +19,44 @@ interface Anchors {
   best: string;
 }
 
-// Score anchors from m5l3-requirements.md. No text in this file may contain an apostrophe:
-// the JSON schema reaches claude-code-action inside single quotes (claude_args --json-schema).
+// Score anchors agreed with the user on 2026-10-24, starting from those in m5l3-requirements.md. No text in this file
+// may contain an apostrophe: the JSON schema reaches claude-code-action inside single quotes (claude_args --json-schema).
 const RUBRIC: Record<CriterionKey, Anchors> = {
   implementationCorrectness: {
-    question: "Does the code actually do what it claims, handling edge cases and error paths without regressions?",
-    worst: "logic is broken, misses obvious edge or error cases, or silently regresses existing behavior.",
-    best: "behaves correctly across the happy path, edge cases and failure modes, with no regressions.",
+    question:
+      "Does the code do exactly what the change claims (its title and description when given, otherwise its code, comments and tests), handling edge cases and error paths without regressions?",
+    worst:
+      "logic is broken or contradicts what the change claims, misses an obvious edge case or error path, or silently regresses existing behavior.",
+    best: "matches what the change claims on the happy path, edge cases and failure modes, with no regressions; errors are reported, not swallowed.",
   },
   idiomaticity: {
-    question: "Does the code follow the language, framework and project conventions a fluent reader would expect?",
-    worst: "fights the idioms of the stack and the established patterns of the repository; reads as foreign.",
-    best: "indistinguishable from well-written surrounding code; uses the right idioms naturally.",
+    question: "Does the code read as if written by someone fluent in the language, the framework and this repository?",
+    worst:
+      "fights the idioms of the stack and the patterns of the repository; naming, structure and error handling are foreign to the surrounding code.",
+    best: "indistinguishable from well-written surrounding code; reuses existing helpers and conventions instead of duplicating them.",
   },
   complexity: {
-    question: "Is the solution as simple as the problem allows, without needless abstraction or convolution?",
-    worst: "over-engineered or tangled; hard to follow, with accidental complexity that obscures intent.",
-    best: "minimal and clear; the simplest design that solves the problem completely.",
+    question: "Is the solution as simple as the problem allows?",
+    worst: "over-engineered or tangled: needless abstractions, layers, flags or state that obscure intent.",
+    best: "minimal and clear; the simplest design that solves the whole problem, with nothing added for hypothetical future needs.",
   },
   testRiskCoverage: {
     question: "Are the meaningful behaviors and risky paths exercised by tests in proportion to their risk?",
-    worst: "risky logic ships untested; tests are absent, trivial or assert nothing useful.",
-    best: "risk-weighted coverage; the parts most likely to break are tested deliberately and well.",
+    worst:
+      "risky logic ships untested; tests are absent, trivial or assert nothing useful, or changed logic comes with no changed tests.",
+    best: "risk-weighted coverage; the parts most likely to break are tested deliberately, including the negative case.",
   },
   documentation: {
-    question: "Are non-obvious decisions, public surfaces and tricky code explained where a reader would need it?",
-    worst: "opaque; no comments or docs where they are needed, so intent must be reverse-engineered.",
-    best: "just enough docs and comments to explain the why, without restating the obvious.",
+    question: "Are non-obvious decisions and public surfaces explained where a reader would need it?",
+    worst:
+      "intent must be reverse-engineered: no comment on a non-obvious choice, no docs for a public API, or public behavior changes with no matching doc change.",
+    best: "just enough to explain the why, without restating the obvious; comments and docs agree with the code.",
   },
   securitySafety: {
     question: "Does the change avoid introducing vulnerabilities, leaking secrets or handling untrusted input unsafely?",
-    worst: "introduces an exploitable flaw, leaks secrets, or trusts untrusted input unsafely.",
-    best: "input is validated, secrets are handled correctly, and no new attack surface is opened.",
+    worst:
+      "introduces an exploitable flaw such as injection, path traversal or a missing authorization check, logs or commits a secret, or trusts untrusted input.",
+    best: "input is validated at the boundary, secrets stay out of code and logs, and no new attack surface is opened, including dependencies the change does not need.",
   },
 };
 

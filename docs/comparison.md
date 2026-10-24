@@ -7,6 +7,8 @@ Trzy PR-y-fixtury z planu (1e) zrecenzowane 2026-10-24 przez oba workflowy, dwa 
 
 Oba zwracają ten sam kontrakt (`reviewer/schema/review-schema.json`). Wiążący `verdict` wynika z ocen: fail, gdy implementationCorrectness ≤ 5, securitySafety ≤ 4 albo dowolne kryterium ≤ 3. W żadnym z dwunastu biegów reguła nie zmieniła werdyktu modelu (`verdict` = `modelVerdict`, komentarze bez noty o nadpisaniu).
 
+Wszystkie wyniki poniżej, oba biegi i evale, powstały na pierwszej wersji kotwic kryteriów, z `m5l3-requirements.md`. Kotwice zmieniły się później tego samego dnia (README, „Kryteria i ich kotwice”).
+
 ## Wyniki
 
 Kolejność ocen: implementationCorrectness / idiomaticity / complexity / testRiskCoverage / documentation / securitySafety.

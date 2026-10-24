@@ -31,8 +31,35 @@ function parseArgs(argv) {
   return args;
 }
 
+// GitHub refuses a comment body over 65,536 characters, and gh pr comment would then fail before the labels are set.
+// Six rationales and the summary at these caps stay well under it.
+const MAX_RATIONALE = 4_000;
+const MAX_SUMMARY = 16_000;
+const CODE = /(`+)[\s\S]*?\1/g;
+
 function oneLine(text) {
   return String(text).replace(/\s*\n\s*/g, " ").trim();
+}
+
+// The model writes what the diff under review steers it to, so its text is untrusted here. Outside code, where
+// GitHub renders it, HTML tags (a </details> that ends our block, an <h2> that fakes a verdict) and headings are
+// escaped, and an @mention gets a zero-width space so it notifies nobody. Code spans and fences render literally.
+function escapeProse(text) {
+  return text
+    .replace(/<(?=[A-Za-z/!])/g, "&lt;")
+    .replace(/^( {0,3})#/gm, "$1\\#")
+    .replace(/(^|[^\w])@(?=[A-Za-z0-9])/g, "$1@\u200b");
+}
+
+function untrusted(text, max) {
+  let out = "";
+  let last = 0;
+  for (const match of text.matchAll(CODE)) {
+    out += escapeProse(text.slice(last, match.index)) + match[0];
+    last = match.index + match[0].length;
+  }
+  out += escapeProse(text.slice(last));
+  return out.length <= max ? out : `${out.slice(0, max)} … (truncated)`;
 }
 
 // Both workflows take the verdict from the scores (VERDICT_RULE); the comment says so when that overrules the model.
@@ -80,11 +107,11 @@ const lines = [
   "",
   "<details><summary>Rationale per criterion</summary>",
   "",
-  ...CRITERIA.map((key) => `- **${key}**: ${oneLine(review.criteria[key].rationale ?? "")}`),
+  ...CRITERIA.map((key) => `- **${key}**: ${untrusted(oneLine(review.criteria[key].rationale ?? ""), MAX_RATIONALE)}`),
   "",
   "</details>",
   "",
-  String(review.summary ?? "").trim(),
+  untrusted(String(review.summary ?? "").trim(), MAX_SUMMARY),
   "",
   footer(review.meta, runUrl),
 ];

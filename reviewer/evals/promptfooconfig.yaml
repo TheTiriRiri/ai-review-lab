@@ -4,7 +4,7 @@
 # prompts/review.txt is generated from src/review-schema.ts (npm run schema:emit), like the CI contract files.
 # promptfoo renders vars as Nunjucks templates, so fixture diffs carry no {{, {% or {# (evals/fixtures.test.js);
 # PROMPTFOO_DISABLE_TEMPLATING is not an option, it would leave {{diff}} in the prompt unfilled.
-description: Code review prompt, three models, three fixture diffs
+description: Code review prompt, three models, four fixture diffs
 
 # The OpenRouter provider defaults to max_tokens 1024, which reasoning models spend before the JSON starts, and to
 # showThinking true, which prefixes the graded output with "Thinking: <reasoning>" (evals/config.test.js).
@@ -77,3 +77,20 @@ tests:
         value: |
           const r = typeof output === 'string' ? JSON.parse(output) : output;
           return r.verdict === 'pass' && Object.values(r.criteria).every((c) => c.score >= 6);
+
+  - description: Inclusive daysBetween, a weekend bug in addBusinessDays and skipped tests (fixture PR 3)
+    vars:
+      diff: file://fixtures/logic-no-tests.diff
+    assert:
+      - type: is-json
+        value: file://../schema/review-schema.json
+      - type: llm-rubric
+        value: >-
+          The review rejects the change and names its planted flaws: the new daysBetween is wrong for the same date
+          and for a range that runs backwards, and it no longer ignores the time of day; addBusinessDays now counts a
+          day before it checks for a weekend, so from a Saturday it lands a day late; and the two tests that the
+          change breaks are skipped instead of fixed.
+      - type: javascript
+        value: |
+          const r = typeof output === 'string' ? JSON.parse(output) : output;
+          return r.verdict === 'fail' && r.criteria.implementationCorrectness.score <= 5 && r.criteria.testRiskCoverage.score <= 4;

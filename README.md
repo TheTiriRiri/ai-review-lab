@@ -34,7 +34,7 @@ Klucz `OPENROUTER_API_KEY` w `reviewer/.env` (gitignorowany) albo w środowisku;
 ## Evale promptfoo (`reviewer/evals/`)
 
 ```bash
-npm run eval   # prompt recenzenta na trzech modelach OpenRouter i trzech fixturach; macierz w terminalu, wynik w reviewer/evals/out/results.json
+npm run eval   # prompt recenzenta na trzech modelach OpenRouter i czterech fixturach; macierz w terminalu, wynik w reviewer/evals/out/results.json
 ```
 
 Prompt (`reviewer/evals/prompts/review.txt`) generuje `schema:emit` z tego samego źródła co kontrakt CI. Klucz jak wyżej, z `reviewer/.env`; promptfoo czyta ten plik sam. Fixtury w `reviewer/evals/fixtures/` nie mogą zawierać `{{`, `{%` ani `{#`, bo promptfoo renderuje zmienne jako szablony Nunjucks; pilnuje tego test. Wyników nie oglądamy przez `promptfoo view`, bo uruchamia lokalny serwer WWW.

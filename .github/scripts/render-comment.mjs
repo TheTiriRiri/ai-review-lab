@@ -39,8 +39,8 @@ const MAX_SUMMARY = 16_000;
 const FENCE_OPEN = /^(`{3,}(?=[^`\n]*\n?$)|~{3,})/;
 // A line that could open or close a fence in some container: only indentation and quote or list markers before it.
 const FENCE_LIKE = /^[ \t]*(?:(?:>|[-+*]|\d{1,9}[.)])[ \t]*)*(?:`{3,}|~{3,})/;
-// The container markers (quote, bullet, ordered item) a heading may follow on its line.
-const BLOCK_PREFIX = String.raw`(?:[ \t]*(?:>|[-+*]|\d{1,9}[.)]))*[ \t]*`;
+// The container markers (quote, bullet, ordered item, footnote label) a heading may follow on its line.
+const BLOCK_PREFIX = String.raw`(?:[ \t]*(?:>|[-+*]|\d{1,9}[.)]|\[\^[^\]]+\]:))*[ \t]*`;
 const ATX_HEADING = new RegExp(String.raw`^(${BLOCK_PREFIX})(?=#{1,6}(?:[ \t]|$))`, "gm");
 const SETEXT_UNDERLINE = /^((?:[ \t]*>)*[ \t]*)(?=(?:=+|-+)[ \t]*$)/gm;
 

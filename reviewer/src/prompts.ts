@@ -7,11 +7,14 @@ export interface ReviewInput {
   diff: string;
 }
 
-// A closing tag inside untrusted text would end its block early and let the rest read as prompt text.
-const CLOSING_TAG = /<\/(pr_title|pr_body|diff)>/gi;
+// A closing tag inside untrusted text would end its block early and let the rest read as prompt text. The match
+// stops at the name, so `</diff >`, `< /diff>` and `</diff x>` count too; only the slash is escaped, the text stays.
+const CLOSING_TAG = /<\s*\/\s*(?:pr_title|pr_body|diff)\b/gi;
 
 function block(tag: string, text: string): string {
-  const content = (text.endsWith("\n") ? text.slice(0, -1) : text).replace(CLOSING_TAG, "<\\/$1>");
+  const content = (text.endsWith("\n") ? text.slice(0, -1) : text).replace(CLOSING_TAG, (closing) =>
+    closing.replace("/", "\\/"),
+  );
   return `<${tag}>\n${content}\n</${tag}>`;
 }
 

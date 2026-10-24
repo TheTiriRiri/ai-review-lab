@@ -29,10 +29,21 @@ describe(".github/workflows/10x-ai-toolkit-sync.yml", () => {
   });
 });
 
+// git check-ignore exits 0 for an ignored path, 1 for one that is not, and 128 when git itself fails.
+function checkIgnoreStatus(path: string): number {
+  try {
+    execFileSync("git", ["check-ignore", "-q", "--no-index", path], { stdio: "ignore" });
+    return 0;
+  } catch (error) {
+    return (error as { status?: number | null }).status ?? -1;
+  }
+}
+
 describe("the installed toolkit paths", () => {
   // An ignored path hides its drift from git status. --no-index checks the rules themselves: without it,
   // check-ignore never reports a tracked file, so a new ignore rule would pass unnoticed until a file goes missing.
+  // Only exit 1 counts: a git that cannot run (128) must fail the test, not pass it.
   it.each(TRACKED)("%s is not ignored by git", (path) => {
-    expect(() => execFileSync("git", ["check-ignore", "-q", "--no-index", path])).toThrow();
+    expect(checkIgnoreStatus(path)).toBe(1);
   });
 });

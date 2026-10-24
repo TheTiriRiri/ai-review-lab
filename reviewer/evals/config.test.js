@@ -13,6 +13,8 @@ const reviewers = config.providers;
 // thinking before the JSON starts. glm-5.3 used 14,125 of 16,384 on the fixture of PR 3 and in a CI run of eval.yml
 // returned an empty review on it; the reviewer agent sends no cap at all.
 const REVIEW_MAX_TOKENS = 32_768;
+// The gated model reasons for up to 22,385 tokens on a fixture and once ran out at 32,768.
+const GATED_MAX_TOKENS = 65_536;
 const GRADER_MAX_TOKENS = 4_096;
 
 const javascriptAssertions = config.tests.flatMap((test) =>
@@ -40,10 +42,12 @@ describe("promptfoo config", () => {
   });
 
   // Without the same routing, the gate grades whichever upstream provider OpenRouter picks, not the one CI reviews with.
-  it("routes the model of variant 2 to the providers the reviewer agent pins, with the same reasoning cap", () => {
+  // Like the agent, it sends no reasoning cap: with one, glm-5.3 reasoned for under 200 tokens and failed half the cases.
+  it("routes the model of variant 2 to the providers the reviewer agent pins, without a reasoning cap", () => {
     const gated = reviewers.find((p) => p.id === `openrouter:${DEFAULT_MODEL}`);
     expect(gated?.config?.provider).toEqual(MODEL_ROUTING[DEFAULT_MODEL]?.provider);
-    expect(gated?.config?.passthrough).toEqual({ reasoning: MODEL_ROUTING[DEFAULT_MODEL]?.reasoning });
+    expect(gated?.config?.passthrough?.reasoning).toBeUndefined();
+    expect(gated?.config?.max_tokens).toBeGreaterThanOrEqual(GATED_MAX_TOKENS);
   });
 
   it("gives the llm-rubric grader room to finish its verdict", () => {

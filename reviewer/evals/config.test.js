@@ -2,14 +2,17 @@ import { readFileSync } from "node:fs";
 import { load } from "js-yaml";
 import { describe, expect, it } from "vitest";
 
+import { DEFAULT_MODEL } from "../src/agent.ts";
+
 // js-yaml is the parser promptfoo itself loads the config with, so these tests read what promptfoo reads.
 const config = load(readFileSync(new URL("./promptfooconfig.yaml", import.meta.url), "utf8"));
 const grader = config.defaultTest.options.provider;
 const reviewers = config.providers;
 
 // promptfoo's OpenRouter provider sends max_tokens 1024 unless told otherwise, and reasoning models spend that on
-// thinking before the JSON starts; the CI reviewer used up to 8,895 output tokens on a 2 KB fixture.
-const REVIEW_MAX_TOKENS = 16_384;
+// thinking before the JSON starts. glm-5.3 used 14,125 of 16,384 on the fixture of PR 3 and in a CI run of eval.yml
+// returned an empty review on it; the reviewer agent sends no cap at all.
+const REVIEW_MAX_TOKENS = 32_768;
 const GRADER_MAX_TOKENS = 4_096;
 
 const javascriptAssertions = config.tests.flatMap((test) =>
@@ -28,6 +31,12 @@ function review(verdict, score) {
 describe("promptfoo config", () => {
   it.each(reviewers.map((p) => [p.id, p]))("%s has room to finish the review", (_id, provider) => {
     expect(provider.config?.max_tokens).toBeGreaterThanOrEqual(REVIEW_MAX_TOKENS);
+  });
+
+  // eval.yml gates on this model, so it runs as the reviewer agent sends it (agent.ts), not at the provider default.
+  it("runs the model of variant 2 at temperature 0, as the reviewer agent does", () => {
+    const gated = reviewers.find((p) => p.id === `openrouter:${DEFAULT_MODEL}`);
+    expect(gated?.config?.temperature).toBe(0);
   });
 
   it("gives the llm-rubric grader room to finish its verdict", () => {

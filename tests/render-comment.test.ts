@@ -158,6 +158,18 @@ describe("render-comment.mjs", () => {
       expectNoInjectedTags(renderWith(text));
     });
 
+    // A fence is a block of its own, so it ends the table before it.
+    it("keeps a fence at column 0 after a table as written", () => {
+      const out = renderWith({ summary: "| a |\n| - |\n| `x` |\n```ts\nconst a: Array<string> = [];\n```" });
+      expect(out).toContain("```ts\nconst a: Array<string> = [];\n```");
+    });
+
+    // The documented cost of not emulating list structure: code copied from this fence keeps the spaces.
+    it("escapes a fence nested in a list item like prose, so its code carries zero-width spaces", () => {
+      const out = renderWith({ summary: "- Fix:\n  ```ts\n  const m: Map<string, number> = new Map();\n  ```" });
+      expect(out).toContain("  const m: Map<\u200bstring, number> = new Map();");
+    });
+
     // GitHub puts the info string into an attribute and escapes it there; escaping it here does not rely on that.
     it("escapes the info string of a fence it keeps, and only that line", () => {
       const out = renderWith({ summary: "~~~ <details> @octocat\n<x>\n~~~" });

@@ -54,7 +54,8 @@ function oneLine(text) {
 // after a `<` that starts raw HTML (a </details> that ends our block, an <h2> that fakes a verdict), before a line
 // that would be a heading, and after the @ of a mention or the & of an entity that spells @, which then notifies
 // nobody. Which backticks pair up into a code span depends on the block structure around them, so this does not
-// try to tell spans from prose: the space renders as nothing inside code too.
+// try to tell spans from prose: the space renders as nothing inside code too. The cost is that code copied from the
+// comment keeps it, which inline code and a fence nested in a list or quote always do.
 function escapeProse(text) {
   return text
     .replace(/<(?=[A-Za-z/!?])/g, "<\u200b")

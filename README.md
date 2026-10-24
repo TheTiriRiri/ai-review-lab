@@ -38,3 +38,5 @@ npm run eval   # prompt recenzenta na trzech modelach OpenRouter i czterech fixt
 ```
 
 Prompt (`reviewer/evals/prompts/review.txt`) generuje `schema:emit` z tego samego źródła co kontrakt CI. Klucz jak wyżej, z `reviewer/.env`; promptfoo czyta ten plik sam. Fixtury w `reviewer/evals/fixtures/` nie mogą zawierać `{{`, `{%` ani `{#`, bo promptfoo renderuje zmienne jako szablony Nunjucks; pilnuje tego test. Wyników nie oglądamy przez `promptfoo view`, bo uruchamia lokalny serwer WWW.
+
+Ten sam eval jest bramką regresji w CI. `.github/workflows/eval.yml` uruchamia go na PR-ach, które zmieniają `reviewer/src/review-schema.ts`, `reviewer/schema/` albo `reviewer/evals/`, oraz ręcznie (`workflow_dispatch`). Bramka ocenia tylko model wariantu 2 (`z-ai/glm-5.3`) i wymaga zaliczenia wszystkich przypadków; dwa pozostałe modele zostają do ręcznego porównania. Bieg kosztuje ok. $0.10–0.20, a pojedynczą pomyłkę gradera usuwa ponowny bieg.

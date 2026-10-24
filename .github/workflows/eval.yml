@@ -1,0 +1,57 @@
+# Regression gate for the review prompt: the promptfoo eval (reviewer/evals/) on the model variant 2 reviews with, on
+# pull requests that change what the eval grades and on demand. A run costs about $0.10-0.20 on OpenRouter; a grader
+# that misjudges a good review once is cleared by running it again.
+name: Prompt eval
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - reviewer/src/review-schema.ts
+      - reviewer/schema/**
+      - reviewer/evals/**
+      - .github/workflows/eval.yml
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  eval:
+    # Same-repository pull requests only: a pull request from a fork gets no secrets.
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    concurrency:
+      group: prompt-eval-${{ github.ref }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      - name: Eval
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          # promptfoo exits non-zero below this pass rate. 100 is its default too; set here, the gate reads as it is.
+          PROMPTFOO_PASS_RATE_THRESHOLD: "100"
+        # The other providers in the config compare models by hand (npm run eval); the gate grades the one in use.
+        # A filter that matched no provider would run no cases and pass, hence the count check.
+        run: |
+          npm run eval -- --filter-providers '^openrouter:z-ai/glm-5\.3$'
+          jq -e '.results.results | length > 0' reviewer/evals/out/results.json > /dev/null \
+            || { echo "::error::the eval ran no cases"; exit 1; }
+
+      - name: Summary
+        if: always() && hashFiles('reviewer/evals/out/results.json') != ''
+        run: |
+          {
+            echo "| case | result | cost | time |"
+            echo "| --- | --- | --- | --- |"
+            jq -r '.results.results[] | "| \(.testCase.description) | \(if .success then "pass" else "fail" end) | \(.response.cost | if . == null then "n/a" else "$\(. * 10000 | round / 10000)" end) | \(.latencyMs / 1000 | round) s |"' \
+              reviewer/evals/out/results.json
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { load } from "js-yaml";
 import { describe, expect, it } from "vitest";
 
+import { DEFAULT_MODEL } from "../reviewer/src/agent.js";
 import { trimDiff } from "../reviewer/src/diff.js";
 import { EXCLUDE_GLOBS, MAX_DIFF_BYTES } from "../reviewer/src/run.js";
 
@@ -118,6 +119,33 @@ describe(".github/workflows/claude-review.yml", () => {
       expect(status).toBe(0);
       expect(cut).toBe(full);
     });
+  });
+});
+
+describe(".github/workflows/eval.yml", () => {
+  const workflow = load(readFileSync(".github/workflows/eval.yml", "utf8")) as {
+    on: { pull_request?: { paths?: string[] }; workflow_dispatch?: unknown };
+    jobs: Record<string, { steps: { name?: string; run?: string; env?: Record<string, string> }[] }>;
+  };
+  const evalStep = Object.values(workflow.jobs).flatMap((job) => job.steps).find((step) => step.name === "Eval");
+
+  // The eval prompt is generated from review-schema.ts, so these paths cover every change to what the eval grades.
+  it("runs on pull requests that change the prompt, the contract or the evals, and on demand", () => {
+    expect(workflow.on.pull_request?.paths).toEqual(
+      expect.arrayContaining(["reviewer/src/review-schema.ts", "reviewer/schema/**", "reviewer/evals/**"]),
+    );
+    expect(workflow.on).toHaveProperty("workflow_dispatch");
+  });
+
+  // A filter that matches no provider runs no tests, and promptfoo passes an empty run.
+  it("evaluates the model variant 2 reviews with, and only that one", () => {
+    const filter = evalStep?.run?.match(/--filter-providers '([^']+)'/)?.[1] ?? "";
+    const { providers } = load(readFileSync("reviewer/evals/promptfooconfig.yaml", "utf8")) as { providers: { id: string }[] };
+    expect(providers.map(({ id }) => id).filter((id) => new RegExp(filter).test(id))).toEqual([`openrouter:${DEFAULT_MODEL}`]);
+  });
+
+  it("fails when any case fails", () => {
+    expect(evalStep?.env?.PROMPTFOO_PASS_RATE_THRESHOLD).toBe("100");
   });
 });
 

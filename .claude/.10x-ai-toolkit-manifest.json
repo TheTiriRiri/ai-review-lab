@@ -1,9 +1,9 @@
 {
   "package": "@thetiririri/10x-ai-toolkit",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "manifestVersion": 1,
   "mode": "copy",
-  "installedAt": "2026-10-24T16:20:40.166Z",
+  "installedAt": "2026-10-24T16:26:54.152Z",
   "files": {
     "skills": {
       "code-review": {

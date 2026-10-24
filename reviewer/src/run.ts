@@ -36,9 +36,9 @@ export async function runReview({ diffSource, title, body, model, log = () => {}
   const trimmed = trimDiff(await readDiff(diffSource), { maxBytes: MAX_DIFF_BYTES, excludeGlobs: EXCLUDE_GLOBS });
   if (trimmed.diff.trim() === "") {
     // The cut keeps whole lines only: after a truncation, an empty diff means its first line did not fit.
-    const reason = trimmed.truncated
-      ? `: its first line is longer than the ${MAX_DIFF_BYTES}-byte cap`
-      : ` once ${EXCLUDE_GLOBS.join(", ")} is excluded`;
+    let reason = ": the diff is empty";
+    if (trimmed.truncated) reason = `: its first line is longer than the ${MAX_DIFF_BYTES}-byte cap`;
+    else if (trimmed.excludedFiles.length > 0) reason = ` once ${EXCLUDE_GLOBS.join(", ")} is excluded`;
     throw new Error(`nothing to review in ${diffSource}${reason}`);
   }
   log(`reviewing ${Buffer.byteLength(trimmed.diff)} bytes of diff${trimmed.truncated ? " (truncated)" : ""}`);

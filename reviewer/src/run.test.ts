@@ -61,6 +61,15 @@ describe("runReview", () => {
     expect(model.doGenerateCalls).toHaveLength(0);
   });
 
+  it("says the diff is empty, not that the exclusion emptied it, when it holds only whitespace", async () => {
+    const model = mockModel(JSON.stringify(passingReview));
+    const source = diffFile("\n  \n");
+    await expect(runReview({ diffSource: source, title: "Add a", model })).rejects.toThrow(
+      `nothing to review in ${source}: the diff is empty`,
+    );
+    expect(model.doGenerateCalls).toHaveLength(0);
+  });
+
   // trimDiff cuts after the last full line that fits, so a first line over the cap leaves nothing, and no exclusion did it.
   it("blames the byte cap, not the exclusion, when the first line of the diff is longer than the cap", async () => {
     const model = mockModel(JSON.stringify(passingReview));

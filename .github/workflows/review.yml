@@ -39,7 +39,7 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         # A 1 MB guard only: the reviewer cuts at 200 KB on a line boundary and reports it in meta.truncated.
         run: |
-          git diff "origin/$BASE_REF...HEAD" -- . ':(exclude)package-lock.json' | head -c 1000000 > "$RUNNER_TEMP/pr.diff"
+          git diff "origin/$BASE_REF...HEAD" -- . ':(exclude,glob)**/package-lock.json' | head -c 1000000 > "$RUNNER_TEMP/pr.diff"
           test -s "$RUNNER_TEMP/pr.diff" || { echo "::error::empty diff"; exit 1; }
           wc -c "$RUNNER_TEMP/pr.diff"
 

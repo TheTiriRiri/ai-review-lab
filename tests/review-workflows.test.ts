@@ -9,6 +9,52 @@ import { describe, expect, it } from "vitest";
 import { trimDiff } from "../reviewer/src/diff.js";
 import { EXCLUDE_GLOBS, MAX_DIFF_BYTES } from "../reviewer/src/run.js";
 
+function computeDiffStep(name: string): string {
+  const { jobs } = load(readFileSync(`.github/workflows/${name}`, "utf8")) as {
+    jobs: Record<string, { steps: { name?: string; run?: string }[] }>;
+  };
+  return Object.values(jobs).flatMap((job) => job.steps).find((step) => step.name === "Compute diff")?.run ?? "";
+}
+
+// Runs a Compute diff step as Actions does (bash -e) in a scratch repository whose origin/main is the base commit and
+// whose HEAD adds `files`, with RUNNER_TEMP inside it. Returns the file the step writes, `output` relative to the
+// repository, and the full diff it was cut from.
+function runComputeDiff(
+  script: string,
+  output: string,
+  files: Record<string, string>,
+): { status: number | null; cut: string; full: string } {
+  const repo = mkdtempSync(join(tmpdir(), "compute-diff-"));
+  try {
+    const git = (...args: string[]) =>
+      execFileSync("git", ["-c", "user.name=test", "-c", "user.email=test@example.com", ...args], {
+        cwd: repo,
+        encoding: "utf8",
+        maxBuffer: 16 * 1024 * 1024,
+      });
+    git("init", "-q");
+    writeFileSync(join(repo, "README.md"), "base\n");
+    git("add", ".");
+    // --no-verify: a global pre-commit hook on a developer machine may refuse the first commit of a new repository.
+    git("commit", "-q", "--no-verify", "-m", "base");
+    git("update-ref", "refs/remotes/origin/main", "HEAD");
+    for (const [path, text] of Object.entries(files)) {
+      mkdirSync(join(repo, path, ".."), { recursive: true });
+      writeFileSync(join(repo, path), text);
+    }
+    git("add", ".");
+    git("commit", "-q", "--no-verify", "-m", "change");
+    const full = git("diff", "origin/main...HEAD");
+    const runnerTemp = join(repo, ".runner-temp");
+    mkdirSync(runnerTemp);
+    const env = { ...process.env, BASE_REF: "main", RUNNER_TEMP: runnerTemp };
+    const result = spawnSync("bash", ["-e", "-c", script], { cwd: repo, env });
+    return { status: result.status, cut: readFileSync(join(repo, output), "utf8"), full };
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+}
+
 const JOB_CONCURRENCY =
   /^ {4}concurrency:\n {6}group: [a-z-]+-\$\{\{ github\.event\.pull_request\.number \}\}\n {6}cancel-in-progress: true$/m;
 
@@ -41,38 +87,8 @@ describe(".github/workflows/claude-review.yml", () => {
   });
 
   describe("Compute diff", () => {
-    const steps = (load(workflow) as { jobs: Record<string, { steps: { name?: string; run?: string }[] }> }).jobs;
-    const script = Object.values(steps).flatMap((job) => job.steps).find((step) => step.name === "Compute diff")?.run ?? "";
-
-    // Runs the step as Actions does (bash -e) in a scratch repository whose origin/main is the base commit and
-    // whose HEAD adds `files`. Returns .ai-review/pr.diff and the full diff it was cut from.
-    function computeDiff(files: Record<string, string>): { status: number | null; cut: string; full: string } {
-      const repo = mkdtempSync(join(tmpdir(), "compute-diff-"));
-      try {
-        const git = (...args: string[]) =>
-          execFileSync("git", ["-c", "user.name=test", "-c", "user.email=test@example.com", ...args], {
-            cwd: repo,
-            encoding: "utf8",
-          });
-        git("init", "-q");
-        writeFileSync(join(repo, "README.md"), "base\n");
-        git("add", ".");
-        // --no-verify: a global pre-commit hook on a developer machine may refuse the first commit of a new repository.
-        git("commit", "-q", "--no-verify", "-m", "base");
-        git("update-ref", "refs/remotes/origin/main", "HEAD");
-        for (const [path, text] of Object.entries(files)) {
-          mkdirSync(join(repo, path, ".."), { recursive: true });
-          writeFileSync(join(repo, path), text);
-        }
-        git("add", ".");
-        git("commit", "-q", "--no-verify", "-m", "change");
-        const full = git("diff", "origin/main...HEAD");
-        const result = spawnSync("bash", ["-e", "-c", script], { cwd: repo, env: { ...process.env, BASE_REF: "main" } });
-        return { status: result.status, cut: readFileSync(join(repo, ".ai-review/pr.diff"), "utf8"), full };
-      } finally {
-        rmSync(repo, { recursive: true, force: true });
-      }
-    }
+    const script = computeDiffStep("claude-review.yml");
+    const computeDiff = (files: Record<string, string>) => runComputeDiff(script, ".ai-review/pr.diff", files);
 
     // A byte cut mid-line, or mid-character, would show Claude a different end of the change than variant 2 sees.
     it("cuts the diff where variant 2 does: after the last whole line within the byte cap, without the lockfile", () => {
@@ -84,10 +100,36 @@ describe(".github/workflows/claude-review.yml", () => {
       expect(cut.endsWith("\n")).toBe(true);
     });
 
+    it("drops every package-lock.json, nested ones too, as variant 2 does", () => {
+      const lock = '{ "lockfileVersion": 3 }\n';
+      const { status, cut, full } = computeDiff({
+        "package-lock.json": lock,
+        "packages/app/package-lock.json": lock,
+        "src/a.ts": "export const a = 1;\n",
+      });
+      expect(status).toBe(0);
+      expect(cut).toBe(trimDiff(full, { maxBytes: MAX_DIFF_BYTES, excludeGlobs: EXCLUDE_GLOBS }).diff);
+      expect(cut).toContain("src/a.ts");
+      expect(cut).not.toContain("package-lock.json");
+    });
+
     it("keeps a diff under the cap whole", () => {
       const { status, cut, full } = computeDiff({ "src/a.ts": "export const a = 1;\n" });
       expect(status).toBe(0);
       expect(cut).toBe(full);
     });
+  });
+});
+
+describe(".github/workflows/review.yml", () => {
+  // trimDiff drops a nested lockfile as well, but only after this 1 MB guard, which a big lockfile would fill first.
+  it("leaves out every package-lock.json before its 1 MB guard", () => {
+    const { status, cut } = runComputeDiff(computeDiffStep("review.yml"), ".runner-temp/pr.diff", {
+      "packages/app/package-lock.json": '  "x": 1,\n'.repeat(120_000),
+      "src/a.ts": "export const a = 1;\n",
+    });
+    expect(status).toBe(0);
+    expect(cut).toContain("src/a.ts");
+    expect(cut).not.toContain("package-lock.json");
   });
 });

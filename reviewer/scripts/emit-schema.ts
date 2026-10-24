@@ -3,7 +3,7 @@
 // the drift tests fail until you do.
 import { mkdirSync, writeFileSync } from "node:fs";
 
-import { REVIEWER_PROMPT, renderEvalPrompt, renderSchemaFile } from "../src/review-schema.js";
+import { REVIEWER_PROMPT, renderEvalPrompt, renderSchemaFile, renderVerdictFilter } from "../src/review-schema.js";
 
 const schemaDir = new URL("../schema/", import.meta.url);
 const evalPromptsDir = new URL("../evals/prompts/", import.meta.url);
@@ -11,5 +11,9 @@ mkdirSync(schemaDir, { recursive: true });
 mkdirSync(evalPromptsDir, { recursive: true });
 writeFileSync(new URL("review-schema.json", schemaDir), renderSchemaFile());
 writeFileSync(new URL("reviewer-prompt.md", schemaDir), `${REVIEWER_PROMPT}\n`);
+writeFileSync(new URL("verdict.jq", schemaDir), renderVerdictFilter());
 writeFileSync(new URL("review.txt", evalPromptsDir), renderEvalPrompt());
-console.log("wrote reviewer/schema/review-schema.json, reviewer/schema/reviewer-prompt.md, reviewer/evals/prompts/review.txt");
+console.log(
+  "wrote reviewer/schema/review-schema.json, reviewer/schema/reviewer-prompt.md, reviewer/schema/verdict.jq, " +
+    "reviewer/evals/prompts/review.txt",
+);

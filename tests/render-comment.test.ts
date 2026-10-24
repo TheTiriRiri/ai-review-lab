@@ -62,6 +62,22 @@ describe("render-comment.mjs", () => {
     expect(out).toContain("cost: $0.0031");
   });
 
+  it("notes when the scores overrule the model's own verdict, and only then", () => {
+    const dir = mkdtempSync(join(tmpdir(), "render-"));
+    const review = JSON.parse(readFileSync(FIXTURE, "utf8"));
+    const overruled = join(dir, "overruled.json");
+    const agreed = join(dir, "agreed.json");
+    writeFileSync(overruled, JSON.stringify({ ...review, modelVerdict: "pass" }));
+    writeFileSync(agreed, JSON.stringify({ ...review, modelVerdict: "fail" }));
+    expect(render(["--title", "T", overruled]).split("\n").slice(0, 4)).toEqual([
+      "## T: **FAIL**",
+      "",
+      "> The scores require **FAIL** under the contract rule; the model's own verdict was **PASS**.",
+      "",
+    ]);
+    expect(render(["--title", "T", agreed])).not.toContain("the model's own verdict");
+  });
+
   it("refuses a review without a pass or fail verdict", () => {
     const dir = mkdtempSync(join(tmpdir(), "render-"));
     const file = join(dir, "review.json");

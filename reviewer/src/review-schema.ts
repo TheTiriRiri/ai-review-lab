@@ -54,9 +54,13 @@ const RUBRIC: Record<CriterionKey, Anchors> = {
   },
 };
 
+// The thresholds behind VERDICT_RULE, verdictFor and schema/verdict.jq, so the three cannot disagree.
+const FAIL_AT = { implementationCorrectness: 5, securitySafety: 4, anyCriterion: 3 } as const;
+
 /** The verdict is a function of the scores, not a separate opinion, which keeps it stable across runs. */
 export const VERDICT_RULE =
-  "Return fail if implementationCorrectness <= 5, or securitySafety <= 4, or any criterion <= 3; otherwise return pass.";
+  `Return fail if implementationCorrectness <= ${FAIL_AT.implementationCorrectness}, ` +
+  `or securitySafety <= ${FAIL_AT.securitySafety}, or any criterion <= ${FAIL_AT.anyCriterion}; otherwise return pass.`;
 
 // Plain z.number(): Anthropic structured output rejects minimum and maximum, so the 1-10 range lives
 // in the descriptions and the prompt, and code that relies on it checks it after parsing.
@@ -87,6 +91,19 @@ export const ReviewResult = z.object({
 
 export type ReviewResult = z.infer<typeof ReviewResult>;
 
+/**
+ * The verdict VERDICT_RULE gives these scores. Both variants hold the model to it: the gate reads this verdict,
+ * and the verdict the model returned travels beside it as modelVerdict.
+ */
+export function verdictFor(criteria: ReviewResult["criteria"]): ReviewResult["verdict"] {
+  const lowest = Math.min(...CRITERIA_KEYS.map((key) => criteria[key].score));
+  const fails =
+    criteria.implementationCorrectness.score <= FAIL_AT.implementationCorrectness ||
+    criteria.securitySafety.score <= FAIL_AT.securitySafety ||
+    lowest <= FAIL_AT.anyCriterion;
+  return fails ? "fail" : "pass";
+}
+
 // draft-07 keeps the output compatible with the Claude Agent SDK outputFormat and claude-code-action.
 export const REVIEW_JSON_SCHEMA = z.toJSONSchema(ReviewResult, { target: "draft-07" });
 
@@ -115,6 +132,19 @@ export const REVIEWER_PROMPT = [
 /** The exact text of schema/review-schema.json: `npm run schema:emit` writes it, and a test guards against drift. */
 export function renderSchemaFile(): string {
   return `${JSON.stringify(REVIEW_JSON_SCHEMA, null, 2)}\n`;
+}
+
+/** schema/verdict.jq: verdictFor as a jq program, which claude-review.yml loads from the base branch. */
+export function renderVerdictFilter(): string {
+  const scores = CRITERIA_KEYS.map((key) => `.criteria.${key}.score`).join(", ");
+  return [
+    "# Generated from reviewer/src/review-schema.ts by npm run schema:emit: the verdict VERDICT_RULE gives the scores.",
+    `if .criteria.implementationCorrectness.score <= ${FAIL_AT.implementationCorrectness}`,
+    `  or .criteria.securitySafety.score <= ${FAIL_AT.securitySafety}`,
+    `  or ([${scores}] | min) <= ${FAIL_AT.anyCriterion}`,
+    'then "fail" else "pass" end',
+    "",
+  ].join("\n");
 }
 
 /**

@@ -15,3 +15,14 @@ describe.each(["claude-review.yml", "review.yml"])(".github/workflows/%s", (name
     expect(workflow).toMatch(JOB_CONCURRENCY);
   });
 });
+
+describe(".github/workflows/claude-review.yml", () => {
+  const workflow = readFileSync(".github/workflows/claude-review.yml", "utf8");
+
+  // Variant 2 applies the same rule in reviewer/src/run.ts; the filter itself is tested in review-schema.test.ts.
+  it("takes the gate verdict from the contract rule on the base branch, not from the model", () => {
+    expect(workflow).toContain('git show "origin/$BASE_REF:reviewer/schema/verdict.jq" > "$RUNNER_TEMP/verdict.jq"');
+    expect(workflow).toContain('verdict=$(jq -er -f "$RUNNER_TEMP/verdict.jq" "$RUNNER_TEMP/model.json")');
+    expect(workflow).toContain('echo "verdict=$verdict" >> "$GITHUB_OUTPUT"');
+  });
+});

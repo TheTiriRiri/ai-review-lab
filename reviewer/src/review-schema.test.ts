@@ -1,16 +1,27 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
 import {
   CRITERIA_KEYS,
+  type CriterionKey,
   REVIEW_JSON_SCHEMA,
   REVIEWER_PROMPT,
   ReviewResult,
   VERDICT_RULE,
   renderEvalPrompt,
   renderSchemaFile,
+  renderVerdictFilter,
+  verdictFor,
 } from "./review-schema.js";
+
+function criteriaWith(scores: Partial<Record<CriterionKey, number>>): ReviewResult["criteria"] {
+  return Object.fromEntries(
+    CRITERIA_KEYS.map((key) => [key, { score: scores[key] ?? 7, rationale: key }]),
+  ) as ReviewResult["criteria"];
+}
 
 const validReview = {
   criteria: Object.fromEntries(CRITERIA_KEYS.map((key) => [key, { score: 7, rationale: `ok (${key})` }])),
@@ -80,6 +91,43 @@ describe("REVIEWER_PROMPT", () => {
     expect(VERDICT_RULE).toBe(
       "Return fail if implementationCorrectness <= 5, or securitySafety <= 4, or any criterion <= 3; otherwise return pass.",
     );
+  });
+});
+
+describe("verdictFor", () => {
+  it.each([
+    [{}, "pass"],
+    [{ implementationCorrectness: 5 }, "fail"],
+    [{ implementationCorrectness: 6 }, "pass"],
+    [{ securitySafety: 4 }, "fail"],
+    [{ securitySafety: 5 }, "pass"],
+    [{ documentation: 3 }, "fail"],
+    [{ documentation: 4 }, "pass"],
+  ] as const)("gives the scores %o the verdict %s, as VERDICT_RULE states", (scores, verdict) => {
+    expect(verdictFor(criteriaWith(scores))).toBe(verdict);
+  });
+});
+
+describe("schema/verdict.jq", () => {
+  const filter = fileURLToPath(new URL("../schema/verdict.jq", import.meta.url));
+
+  it("matches the module (run npm run schema:emit after a change)", () => {
+    expect(readFileSync(filter, "utf8")).toBe(renderVerdictFilter());
+  });
+
+  it("gives the verdict verdictFor gives, for every combination of scores 3 to 6", () => {
+    const grid: ReviewResult["criteria"][] = [{} as ReviewResult["criteria"]];
+    for (const key of CRITERIA_KEYS) {
+      const next: ReviewResult["criteria"][] = [];
+      for (const criteria of grid) {
+        for (const score of [3, 4, 5, 6]) next.push({ ...criteria, [key]: { score, rationale: key } });
+      }
+      grid.splice(0, grid.length, ...next);
+    }
+    const input = grid.map((criteria) => JSON.stringify({ criteria, verdict: "pass", summary: "" })).join("\n");
+    const fromJq = execFileSync("jq", ["-r", "-f", filter], { input, encoding: "utf8" }).trimEnd().split("\n");
+    expect(fromJq).toHaveLength(4096);
+    expect(fromJq).toEqual(grid.map(verdictFor));
   });
 });
 

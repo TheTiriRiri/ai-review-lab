@@ -39,6 +39,20 @@ describe("runReview", () => {
     expect(sent).not.toContain("lockfileVersion");
   });
 
+  it("takes the verdict from the scores and keeps the model's own verdict beside it", async () => {
+    const securitySafety = { score: 2, rationale: "src/config.ts:4 logs the API token." };
+    const contradicting = { ...passingReview, criteria: { ...passingReview.criteria, securitySafety } };
+    const lines: string[] = [];
+    const report = await runReview({
+      diffSource: diffFile(SOURCE),
+      title: "Add a",
+      model: mockModel(JSON.stringify(contradicting)),
+      log: (line) => lines.push(line),
+    });
+    expect(report).toMatchObject({ verdict: "fail", modelVerdict: "pass" });
+    expect(lines).toContainEqual(expect.stringMatching(/model verdict pass contradicts its scores; the rule gives fail/));
+  });
+
   it("refuses a diff with nothing left to review, before any model call", async () => {
     const model = mockModel(JSON.stringify(passingReview));
     await expect(runReview({ diffSource: diffFile(LOCKFILE), title: "Bump lockfile", model })).rejects.toThrow(

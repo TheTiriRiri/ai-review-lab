@@ -35,6 +35,16 @@ function oneLine(text) {
   return String(text).replace(/\s*\n\s*/g, " ").trim();
 }
 
+// Both workflows take the verdict from the scores (VERDICT_RULE); the comment says so when that overrules the model.
+function overruleNote({ verdict, modelVerdict }) {
+  if ((modelVerdict !== "pass" && modelVerdict !== "fail") || modelVerdict === verdict) return [];
+  return [
+    `> The scores require **${verdict.toUpperCase()}** under the contract rule; ` +
+      `the model's own verdict was **${modelVerdict.toUpperCase()}**.`,
+    "",
+  ];
+}
+
 function footer(meta, runUrl) {
   const model = meta?.model ?? "n/a";
   const duration = typeof meta?.durationMs === "number" ? `${(meta.durationMs / 1000).toFixed(1)} s` : "n/a";
@@ -63,6 +73,7 @@ for (const key of CRITERIA) {
 const lines = [
   `## ${title}: **${review.verdict.toUpperCase()}**`,
   "",
+  ...overruleNote(review),
   "| Criterion | Score |",
   "| --- | --- |",
   ...CRITERIA.map((key) => `| ${key} | ${review.criteria[key].score} |`),

@@ -52,6 +52,7 @@ jobs:
           schema=$(git show "origin/$BASE_REF:reviewer/schema/review-schema.json" | jq -c .)
           case "$schema" in *"'"*) echo "::error::schema contains a single quote"; exit 1;; esac
           echo "schema=$schema" >> "$GITHUB_OUTPUT"
+          git show "origin/$BASE_REF:reviewer/schema/verdict.jq" > "$RUNNER_TEMP/verdict.jq"
           {
             echo "prompt<<__REVIEWER_PROMPT__"
             git show "origin/$BASE_REF:reviewer/schema/reviewer-prompt.md"
@@ -88,10 +89,13 @@ jobs:
         if: always() && steps.claude.outputs.structured_output != ''
         env:
           REVIEW_JSON: ${{ steps.claude.outputs.structured_output }} # via env: the summary is model text
+        # The gate verdict is the one the contract rule gives the scores; the model's own stays as modelVerdict.
         run: |
-          printf '%s' "$REVIEW_JSON" > "$RUNNER_TEMP/review.json"
-          jq -e '.verdict | IN("pass", "fail")' "$RUNNER_TEMP/review.json" > /dev/null
-          echo "verdict=$(jq -r .verdict "$RUNNER_TEMP/review.json")" >> "$GITHUB_OUTPUT"
+          printf '%s' "$REVIEW_JSON" > "$RUNNER_TEMP/model.json"
+          jq -e '.verdict | IN("pass", "fail")' "$RUNNER_TEMP/model.json" > /dev/null
+          verdict=$(jq -er -f "$RUNNER_TEMP/verdict.jq" "$RUNNER_TEMP/model.json")
+          jq --arg verdict "$verdict" '.modelVerdict = .verdict | .verdict = $verdict' "$RUNNER_TEMP/model.json" > "$RUNNER_TEMP/review.json"
+          echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
           jq . "$RUNNER_TEMP/review.json"
 
       - name: Comment and label

@@ -9,7 +9,7 @@ Mały projekt TypeScript (`src/`) z testami Vitest (`tests/`) istnieje po to, ż
 | `.github/workflows/claude-review.yml` | `anthropics/claude-code-action` (gotowiec), prompt z sześcioma kryteriami i wymuszonym schematem werdyktu | `claude-cr:passed` / `claude-cr:failed` | `CLAUDE_CODE_OAUTH_TOKEN` |
 | `.github/workflows/review.yml` | własny agent w `reviewer/` (Vercel AI SDK + OpenRouter) przez composite action `.github/actions/ai-reviewer` | `ai-cr:passed` / `ai-cr:failed` | `OPENROUTER_API_KEY` |
 
-Oba czytają ten sam kontrakt werdyktu (`reviewer/schema/review-schema.json`): sześć kryteriów ocenianych 1–10 z uzasadnieniem, wiążący `verdict: pass | fail` i `summary` w Markdown. Etykieta `ai-cr:review` dodana do PR-a uruchamia oba workflowy ponownie.
+Oba czytają ten sam kontrakt werdyktu (`reviewer/schema/review-schema.json`): sześć kryteriów ocenianych 1–10 z uzasadnieniem, `verdict: pass | fail` i `summary` w Markdown. Wiążący werdykt, który czyta bramka, wynika z ocen według reguły kontraktu: w wariancie 1 jest to `reviewer/schema/verdict.jq` z gałęzi bazowej, w wariancie 2 `verdictFor`. Werdykt samego modelu zostaje w `modelVerdict`, a komentarz zaznacza, gdy reguła go zmieniła. Etykieta `ai-cr:review` dodana do PR-a uruchamia oba workflowy ponownie.
 
 ## Komendy
 
@@ -29,7 +29,7 @@ npm run review -- --file x.diff --fail-on-verdict                 # kod wyjścia
 npm run build                                                     # reviewer/dist/, którego używa composite action
 ```
 
-Klucz `OPENROUTER_API_KEY` w `reviewer/.env` (gitignorowany) albo w środowisku; domyślny model to `z-ai/glm-5.3` (`REVIEW_MODEL` lub `--model` go podmienia). Na stdout trafia jeden JSON: sześć ocen, `verdict`, `summary` i `meta` (model, czas, koszt z OpenRouter, tokeny, wykluczone pliki); logi idą na stderr. Testy agenta (`npm test`) używają atrapy modelu z `ai/test` i nie wykonują żadnych zapytań HTTP.
+Klucz `OPENROUTER_API_KEY` w `reviewer/.env` (gitignorowany) albo w środowisku; domyślny model to `z-ai/glm-5.3` (`REVIEW_MODEL` lub `--model` go podmienia). Na stdout trafia jeden JSON: sześć ocen, `verdict` (z reguły), `modelVerdict`, `summary` i `meta` (model, czas, koszt z OpenRouter, tokeny, wykluczone pliki); logi idą na stderr. Testy agenta (`npm test`) używają atrapy modelu z `ai/test` i nie wykonują żadnych zapytań HTTP.
 
 ## Evale promptfoo (`reviewer/evals/`)
 

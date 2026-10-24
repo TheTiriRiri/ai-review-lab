@@ -1,0 +1,56 @@
+{
+  "package": "@thetiririri/10x-ai-toolkit",
+  "version": "0.1.0",
+  "manifestVersion": 1,
+  "mode": "copy",
+  "installedAt": "2026-10-24T16:20:40.166Z",
+  "files": {
+    "skills": {
+      "code-review": {
+        "files": [
+          "SKILL.md"
+        ],
+        "contentHashes": {
+          "SKILL.md": "d7f59f98a38be16ed2c61a83501d4a95bf2b3f4381c46af940dac347412f3128"
+        }
+      },
+      "html-report": {
+        "files": [
+          "SKILL.md",
+          "build_report.py",
+          "edit-mode.js",
+          "example.md",
+          "report-blueprint.css",
+          "report-brutal.css",
+          "report-catppuccin.css",
+          "report-engineering.css",
+          "report-paper.css",
+          "report-riviera.css",
+          "report-tui.css",
+          "report.css",
+          "theme-preview.md"
+        ],
+        "contentHashes": {
+          "SKILL.md": "69be11b5353f122739a4312ccb062dce6b9c50b650c663da2eb07995e866366e",
+          "build_report.py": "0020d3db0e287916c3428f6a06e2d936a715ee25afde9af4a2fee0a0bc0ef2eb",
+          "edit-mode.js": "8b2f3dbf78d45e99896e198b8b270494e21ce1bf298b27258a879ae6bf4ec2be",
+          "example.md": "f25aea180a0a6cefa90def6af4d7bc05c4378808c6d18ee5e22898820c0df6a3",
+          "report-blueprint.css": "1852a92741c72f80ed3a41210bb7b4315b3161e1d84be4c0780332e8868e0afd",
+          "report-brutal.css": "c952631914e3b6a3d52a77d6d4fabc00498bbd7f7c8f6622baaa6a9081dd9218",
+          "report-catppuccin.css": "de022e78873551eb67309cb5537bbe90bb9c8fe1c6a1c93eddd83c665003e6b3",
+          "report-engineering.css": "b83a852549e1c593d087b47bdbc1588cac02cc3c2d99f84165be9aa0cb0b20ab",
+          "report-paper.css": "6f5a96687bd4f363d8122cb9f27868ea32fea6d605956e1beb828f0f1252b45e",
+          "report-riviera.css": "00e28fd3123adc4866ae03788937a2e58e9c004d7e3205753021afc443a6f884",
+          "report-tui.css": "28232b9da3bce4cd313b7ef99734d09ee6841c593d1350636335b49a9b9b144a",
+          "report.css": "6b8be4526ea092d2e6c12f470b28dab3254ad2d5d2dc957e3cb5b5adb42dcdcb",
+          "theme-preview.md": "fe37e1bebfe7e8c9b07107208bbc1d7584413991f220447555b73fb74c6fb0d6"
+        }
+      }
+    },
+    "rules": {
+      "file": "CLAUDE.md",
+      "blockHash": "c424d6733780891cc986cf602bbb3d73a5b5d86d2f840aa9f4c0d70cbf1fc2d7",
+      "createdFile": true
+    }
+  }
+}

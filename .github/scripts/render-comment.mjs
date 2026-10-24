@@ -117,7 +117,8 @@ function overruleNote({ verdict, modelVerdict }) {
   ];
 }
 
-function footer(meta, runUrl) {
+// The run line goes above the model text: a fence the model leaves open runs to the end of the comment.
+function runLine(meta, runUrl) {
   const model = meta?.model ?? "n/a";
   const duration = typeof meta?.durationMs === "number" ? `${(meta.durationMs / 1000).toFixed(1)} s` : "n/a";
   let cost = "subscription";
@@ -150,6 +151,8 @@ const lines = [
   "| --- | --- |",
   ...CRITERIA.map((key) => `| ${key} | ${review.criteria[key].score} |`),
   "",
+  runLine(review.meta, runUrl),
+  "",
   "<details><summary>Rationale per criterion</summary>",
   "",
   ...CRITERIA.map((key) => `- **${key}**: ${untrusted(oneLine(review.criteria[key].rationale ?? ""), MAX_RATIONALE)}`),
@@ -157,8 +160,6 @@ const lines = [
   "</details>",
   "",
   untrusted(String(review.summary ?? "").trim(), MAX_SUMMARY),
-  "",
-  footer(review.meta, runUrl),
 ];
 
 process.stdout.write(`${lines.join("\n")}\n`);

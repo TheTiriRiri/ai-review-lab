@@ -176,6 +176,18 @@ describe("render-comment.mjs", () => {
       expect(out).toContain("~~~ <\u200bdetails> @\u200boctocat\n<x>\n~~~");
     });
 
+    // An unclosed fence at the top level runs to the end of the comment, and whether a fence nested in a list is at
+    // the top level depends on the block structure; with the summary last, such a fence takes in only the summary.
+    it.each(["Fails.\n```ts\nconst a = 1;", "- Fix:\n  ```\n  b\n  ```\n\nThen:\n  ```\nconst a = 1;"])(
+      "puts the run line before the summary, so an unclosed fence in it swallows nothing else (%j)",
+      (summary) => {
+        const out = renderWith({ summary });
+        expect(out.indexOf("<sub>model:")).toBeGreaterThan(out.indexOf("| securitySafety |"));
+        expect(out.indexOf("<sub>model:")).toBeLessThan(out.indexOf("<details>"));
+        expect(out.trimEnd().endsWith("const a = 1;")).toBe(true);
+      },
+    );
+
     // CommonMark ends a line at a bare carriage return too, which would start a block of its own below the list item.
     it("keeps a rationale on its one line when it holds a bare carriage return", () => {
       const out = renderWith({ rationale: "a\r```\rb" });

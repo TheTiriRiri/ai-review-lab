@@ -39,7 +39,7 @@ describe("reviewDiff", () => {
     expect(model.doGenerateCalls[0]?.providerOptions).toEqual({ openrouter: { usage: { include: true } } });
   });
 
-  // A zero would read as a free review in the comment footer and the variant comparison; the footer shows n/a.
+  // A zero would read as a free review in the PR comment and the variant comparison; the comment shows n/a.
   it("reports the cost as unknown, not zero, when the provider sends no usage accounting", async () => {
     expect((await reviewDiff(input, { model: mockModel(JSON.stringify(review)) })).costUsd).toBeUndefined();
   });

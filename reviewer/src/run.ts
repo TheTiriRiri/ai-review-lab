@@ -1,5 +1,5 @@
 // The pipeline both entry points share (cli.ts locally, review.ts in CI): read and trim the diff,
-// review it, and attach the run metadata the PR comment footer and the variant comparison read.
+// review it, and attach the run metadata the PR comment and the variant comparison read.
 import type { LanguageModel } from "ai";
 
 import { reviewDiff } from "./agent.js";

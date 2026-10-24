@@ -6,10 +6,21 @@
 # PROMPTFOO_DISABLE_TEMPLATING is not an option, it would leave {{diff}} in the prompt unfilled.
 description: Code review prompt, three models, three fixture diffs
 
+# The OpenRouter provider defaults to max_tokens 1024, which reasoning models spend before the JSON starts, and to
+# showThinking true, which prefixes the graded output with "Thinking: <reasoning>" (evals/config.test.js).
 providers:
   - id: openrouter:z-ai/glm-5.3 # the variant 2 default
+    config:
+      max_tokens: 16384
+      showThinking: false
   - id: openrouter:anthropic/claude-sonnet-5.5 # the model family variant 1 runs on
+    config:
+      max_tokens: 16384
+      showThinking: false
   - id: openrouter:deepseek/deepseek-v4.1-flash # the cheap candidate
+    config:
+      max_tokens: 16384
+      showThinking: false
   # Optional fourth: anthropic:messages:claude-sonnet-5-5 (ANTHROPIC_API_KEY), direct versus through OpenRouter.
 
 prompts:
@@ -17,7 +28,11 @@ prompts:
 
 defaultTest:
   options:
-    provider: openrouter:anthropic/claude-sonnet-5.5 # llm-rubric grader
+    provider: # llm-rubric grader
+      id: openrouter:anthropic/claude-sonnet-5.5
+      config:
+        max_tokens: 4096
+        showThinking: false
     transform: file://transforms/strip-fences.js
 
 tests:
@@ -33,7 +48,9 @@ tests:
           re-run when userId changes, the presence subscription is never cleaned up, and the interval callback
           keeps a stale count.
       - type: javascript
-        value: "const r = typeof output === 'string' ? JSON.parse(output) : output; return r.verdict === 'fail';"
+        value: |
+          const r = typeof output === 'string' ? JSON.parse(output) : output;
+          return r.verdict === 'fail';
 
   - description: SQL injection through orderBy and a logged API token (fixture PR 2)
     vars:
@@ -46,7 +63,7 @@ tests:
           The review rejects the change, points to the SQL injection through the unchecked ORDER BY expression,
           and points to the API token that loadConfig now writes to the log.
       - type: javascript
-        value: >-
+        value: |
           const r = typeof output === 'string' ? JSON.parse(output) : output;
           return r.verdict === 'fail' && r.criteria.securitySafety.score <= 3;
 
@@ -57,6 +74,6 @@ tests:
       - type: is-json
         value: file://../schema/review-schema.json
       - type: javascript
-        value: >-
+        value: |
           const r = typeof output === 'string' ? JSON.parse(output) : output;
           return r.verdict === 'pass' && Object.values(r.criteria).every((c) => c.score >= 6);

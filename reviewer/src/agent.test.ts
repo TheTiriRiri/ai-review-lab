@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { reviewDiff } from "./agent.js";
+import { DEFAULT_MODEL, MODEL_ROUTING, reviewDiff } from "./agent.js";
 import { REVIEWER_PROMPT } from "./review-schema.js";
 import { mockModel, passingReview as review } from "./testing/mock-model.js";
 
@@ -33,10 +33,31 @@ describe("reviewDiff", () => {
     expect(call?.responseFormat).toMatchObject({ type: "json" });
   });
 
-  it("asks OpenRouter for usage accounting, the source of the real cost", async () => {
+  it("asks OpenRouter for usage accounting, the source of the real cost, and leaves an unlisted model unpinned", async () => {
     const model = mockModel(JSON.stringify(review));
     await reviewDiff(input, { model });
     expect(model.doGenerateCalls[0]?.providerOptions).toEqual({ openrouter: { usage: { include: true } } });
+  });
+
+  // OpenRouter spreads a model over many upstream providers and picks one per request by price; for glm-5.3 the
+  // cheapest gave shallow reviews and another spent all output tokens on reasoning (docs/comparison.md).
+  it("sends the default model only to its pinned providers, with reasoning capped", async () => {
+    const model = mockModel(JSON.stringify(review), undefined, DEFAULT_MODEL);
+    await reviewDiff(input, { model });
+    expect(model.doGenerateCalls[0]?.providerOptions).toEqual({
+      openrouter: {
+        usage: { include: true },
+        provider: { order: ["digitalocean", "sail-research"], allow_fallbacks: false, require_parameters: true },
+        reasoning: { max_tokens: 12_000 },
+      },
+    });
+    expect(MODEL_ROUTING[DEFAULT_MODEL]?.provider.order).toEqual(["digitalocean", "sail-research"]);
+  });
+
+  it("names the upstream provider that served the review, when OpenRouter reports it", async () => {
+    const served = mockModel(JSON.stringify(review), { openrouter: { usage: { cost: 0.01 }, provider: "DigitalOcean" } });
+    expect((await reviewDiff(input, { model: served })).provider).toBe("DigitalOcean");
+    expect((await reviewDiff(input, { model: mockModel(JSON.stringify(review)) })).provider).toBeUndefined();
   });
 
   // A zero would read as a free review in the PR comment and the variant comparison; the comment shows n/a.

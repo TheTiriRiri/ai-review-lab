@@ -23,6 +23,7 @@ export interface ReviewReport extends ReviewResult {
   modelVerdict: ReviewResult["verdict"];
   meta: {
     model: string;
+    provider: string | undefined;
     durationMs: number;
     costUsd: number | undefined;
     inputTokens: number | undefined;
@@ -54,6 +55,7 @@ export async function runReview({ diffSource, title, body, model, log = () => {}
     modelVerdict: outcome.result.verdict,
     meta: {
       model: outcome.model,
+      provider: outcome.provider,
       durationMs: outcome.durationMs,
       costUsd: outcome.costUsd,
       inputTokens: outcome.usage.inputTokens,

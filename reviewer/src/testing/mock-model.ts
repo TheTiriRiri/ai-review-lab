@@ -18,8 +18,13 @@ export const passingReview: ReviewResult = {
 };
 
 /** A model that answers every call with `text`, 1200 input and 300 output tokens, and optional OpenRouter metadata. */
-export function mockModel(text: string, providerMetadata?: { openrouter: { usage: { cost: number } } }) {
+export function mockModel(
+  text: string,
+  providerMetadata?: { openrouter: { usage: { cost: number }; provider?: string } },
+  modelId = "mock-model-id",
+) {
   return new MockLanguageModelV4({
+    modelId,
     doGenerate: {
       content: [{ type: "text", text }],
       finishReason: { unified: "stop", raw: "stop" },

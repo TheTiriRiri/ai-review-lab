@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { load } from "js-yaml";
 import { describe, expect, it } from "vitest";
 
-import { DEFAULT_MODEL } from "../src/agent.ts";
+import { DEFAULT_MODEL, MODEL_ROUTING } from "../src/agent.ts";
 
 // js-yaml is the parser promptfoo itself loads the config with, so these tests read what promptfoo reads.
 const config = load(readFileSync(new URL("./promptfooconfig.yaml", import.meta.url), "utf8"));
@@ -37,6 +37,13 @@ describe("promptfoo config", () => {
   it("runs the model of variant 2 at temperature 0, as the reviewer agent does", () => {
     const gated = reviewers.find((p) => p.id === `openrouter:${DEFAULT_MODEL}`);
     expect(gated?.config?.temperature).toBe(0);
+  });
+
+  // Without the same routing, the gate grades whichever upstream provider OpenRouter picks, not the one CI reviews with.
+  it("routes the model of variant 2 to the providers the reviewer agent pins, with the same reasoning cap", () => {
+    const gated = reviewers.find((p) => p.id === `openrouter:${DEFAULT_MODEL}`);
+    expect(gated?.config?.provider).toEqual(MODEL_ROUTING[DEFAULT_MODEL]?.provider);
+    expect(gated?.config?.passthrough).toEqual({ reasoning: MODEL_ROUTING[DEFAULT_MODEL]?.reasoning });
   });
 
   it("gives the llm-rubric grader room to finish its verdict", () => {

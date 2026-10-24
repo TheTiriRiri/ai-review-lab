@@ -38,6 +38,8 @@ npm run build                                                     # reviewer/dis
 
 Klucz `OPENROUTER_API_KEY` w `reviewer/.env` (gitignorowany) albo w środowisku; domyślny model to `z-ai/glm-5.3` (`REVIEW_MODEL` lub `--model` go podmienia). Na stdout trafia jeden JSON: sześć ocen, `verdict` (z reguły), `modelVerdict`, `summary` i `meta` (model, czas, koszt z OpenRouter, tokeny, wykluczone pliki); logi idą na stderr. Testy agenta (`npm test`) używają atrapy modelu z `ai/test` i nie wykonują żadnych zapytań HTTP.
 
+OpenRouter obsługuje jeden model przez wielu dostawców i wybiera ich według ceny, a dla glm-5.3 jakość recenzji zależała od tego wyboru. Dlatego `MODEL_ROUTING` w `reviewer/src/agent.ts` przypina glm-5.3 do DigitalOcean, zapasowo Sail Research, i ogranicza reasoning do 12 000 tokenów. Gdy obaj są niedostępni, recenzja kończy się błędem zamiast trafić do innego dostawcy. `meta.provider` podaje, kto recenzował. Model spoza mapy idzie przez domyślny routing OpenRouter. Eval używa tej samej konfiguracji, a test pilnuje, żeby się zgadzała.
+
 ## Evale promptfoo (`reviewer/evals/`)
 
 ```bash

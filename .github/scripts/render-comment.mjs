@@ -42,7 +42,8 @@ const FENCE_LIKE = /^[ \t]*(?:(?:>|[-+*]|\d{1,9}[.)])[ \t]*)*(?:`{3,}|~{3,})/;
 // The container markers (quote, bullet, ordered item, footnote label) a heading may follow on its line.
 const BLOCK_PREFIX = String.raw`(?:[ \t]*(?:>|[-+*]|\d{1,9}[.)]|\[\^[^\]]+\]:))*[ \t]*`;
 const ATX_HEADING = new RegExp(String.raw`^(${BLOCK_PREFIX})(?=#{1,6}(?:[ \t]|$))`, "gm");
-const SETEXT_UNDERLINE = /^((?:[ \t]*>)*[ \t]*)(?=(?:=+|-+)[ \t]*$)/gm;
+// Only a line right under a non-blank one can underline a heading; after a blank line, --- is a thematic break.
+const SETEXT_UNDERLINE = /(?<=^[^\n]*\S[^\n]*\n)((?:[ \t]*>)*[ \t]*)(?=(?:=+|-+)[ \t]*$)/gm;
 
 // CommonMark ends a line at \n, \r\n and a bare \r alike.
 function oneLine(text) {

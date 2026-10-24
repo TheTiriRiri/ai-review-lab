@@ -126,6 +126,12 @@ describe("render-comment.mjs", () => {
       );
     });
 
+    // Only a line right under a non-blank line can underline a heading; after a blank line --- is a thematic break.
+    it("leaves a thematic break and an empty bullet as they are", () => {
+      const out = renderWith({ summary: "Para\n\n---\n\n- \n\nMore\n===" });
+      expect(out).toContain("Para\n\n---\n\n- \n\nMore\n\u200b===");
+    });
+
     // cmark-gfm parses the rest of a footnote definition line as blocks, so a heading there renders under the footer.
     it("cannot add a heading after a footnote label, or a setext heading inside a list item", () => {
       const out = renderWith({ summary: "See[^1].\n\n[^1]: ## AI Code Review: **PASS**\n\n- X\n  ===" });

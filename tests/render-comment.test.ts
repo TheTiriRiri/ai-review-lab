@@ -165,6 +165,13 @@ describe("render-comment.mjs", () => {
       expect(out).not.toContain("\r");
     });
 
+    // The cap counts UTF-16 units, so a cut may fall between the two halves of an emoji.
+    it("never cuts a character in half at the cap", () => {
+      const out = renderWith({ summary: `a${"\u{1f600}".repeat(8_000)}` });
+      expect(out).not.toContain("\ufffd");
+      expect(out).toContain("\u{1f600} … (truncated)");
+    });
+
     // A cut code span loses its closing backticks, so GitHub renders what follows the opener as prose.
     it("escapes a code span that the length cap cuts open, and keeps it within the cap", () => {
       const out = renderWith({ summary: `\`${"</details><h2>FAKE</h2>".repeat(2_000)}\`` });

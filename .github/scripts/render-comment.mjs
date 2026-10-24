@@ -95,8 +95,10 @@ function untrusted(text, max) {
   for (const { code, text: part } of fencedParts(text.replace(/\r\n?/g, "\n"))) {
     const safe = code ? part : escapeProse(part);
     if (out.length + safe.length > max) {
-      // Escaped text stays safe wherever it is cut; a cut fence loses its closing line, so it is escaped too.
-      return `${out}${escapeProse(part).slice(0, max - out.length)} … (truncated)`;
+      // Escaped text stays safe wherever it is cut; a cut fence loses its closing line, so it is escaped too. The cut
+      // backs off a high surrogate, which alone would print as U+FFFD.
+      const cut = escapeProse(part).slice(0, max - out.length).replace(/[\ud800-\udbff]$/, "");
+      return `${out}${cut} … (truncated)`;
     }
     out += safe;
   }

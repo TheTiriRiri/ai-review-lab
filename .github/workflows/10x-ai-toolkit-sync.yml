@@ -1,0 +1,32 @@
+name: 10x-ai-toolkit sync
+
+# Drift gate for the copied @thetiririri/10x-ai-toolkit files: reinstalls the version the manifest records and
+# fails when that changes anything, so the skills and the CLAUDE.md block only change through a toolkit release.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          registry-url: https://npm.pkg.github.com
+          scope: "@thetiririri"
+      - name: Reinstall the recorded toolkit version and fail on drift
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_PKG_TOKEN }}
+        run: |
+          version=$(node -p 'require("./.claude/.10x-ai-toolkit-manifest.json").version')
+          npx --yes "@thetiririri/10x-ai-toolkit@$version" --force
+          drift=$(git status --porcelain -- .claude/skills CLAUDE.md .claude/.10x-ai-toolkit-manifest.json)
+          if [ -n "$drift" ]; then echo "$drift"; exit 1; fi

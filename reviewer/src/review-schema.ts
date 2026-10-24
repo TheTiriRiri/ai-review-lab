@@ -148,7 +148,7 @@ export function renderVerdictFilter(): string {
     "# Generated from reviewer/src/review-schema.ts by npm run schema:emit: the verdict VERDICT_RULE gives the scores.",
     "def check($key): .criteria[$key].score as $s",
     `  | if ($s | type) == "number" and $s == ($s | floor) and $s >= ${min} and $s <= ${max} then .`,
-    `    else error("criterion \\($key) has score \\($s); expected an integer from ${min} to ${max}") end;`,
+    `    else error("criterion \\($key) has score \\($s | tojson); expected an integer from ${min} to ${max}") end;`,
     `${CRITERIA_KEYS.map((key) => `check("${key}")`).join(" | ")}`,
     `| if .criteria.implementationCorrectness.score <= ${FAIL_AT.implementationCorrectness}`,
     `  or .criteria.securitySafety.score <= ${FAIL_AT.securitySafety}`,

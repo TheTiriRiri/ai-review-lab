@@ -79,7 +79,9 @@ function fencedParts(text) {
     if (end === -1) {
       prose += lines[i];
     } else {
-      parts.push({ code: false, text: prose }, { code: true, text: lines.slice(i, end + 1).join("") });
+      // The info string goes into an attribute that GitHub escapes; escaping it here as well costs nothing.
+      const block = escapeProse(lines[i]) + lines.slice(i + 1, end + 1).join("");
+      parts.push({ code: false, text: prose }, { code: true, text: block });
       prose = "";
       i = end;
     }

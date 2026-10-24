@@ -152,6 +152,12 @@ describe("render-comment.mjs", () => {
       expectNoInjectedTags(renderWith(text));
     });
 
+    // GitHub puts the info string into an attribute and escapes it there; escaping it here does not rely on that.
+    it("escapes the info string of a fence it keeps, and only that line", () => {
+      const out = renderWith({ summary: "~~~ <details> @octocat\n<x>\n~~~" });
+      expect(out).toContain("~~~ <\u200bdetails> @\u200boctocat\n<x>\n~~~");
+    });
+
     // CommonMark ends a line at a bare carriage return too, which would start a block of its own below the list item.
     it("keeps a rationale on its one line when it holds a bare carriage return", () => {
       const out = renderWith({ rationale: "a\r```\rb" });

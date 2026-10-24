@@ -11,6 +11,13 @@ Mały projekt TypeScript (`src/`) z testami Vitest (`tests/`) istnieje po to, ż
 
 Oba czytają ten sam kontrakt werdyktu (`reviewer/schema/review-schema.json`): sześć kryteriów ocenianych 1–10 z uzasadnieniem, `verdict: pass | fail` i `summary` w Markdown. Wiążący werdykt, który czyta bramka, wynika z ocen według reguły kontraktu: w wariancie 1 jest to `reviewer/schema/verdict.jq` z gałęzi bazowej, w wariancie 2 `verdictFor`. Werdykt samego modelu zostaje w `modelVerdict`, a komentarz zaznacza, gdy reguła go zmieniła. Tekst modelu w komentarzu jest nieufny, więc `.github/scripts/render-comment.mjs` wstawia niewidoczny znak zero-width space (U+200B) po `<` przed tagiem, przed linią nagłówka i po `@` wzmianki; kod inline i bloki kodu zagnieżdżone w liście lub cytacie skopiowane z komentarza zawierają ten znak. Etykieta `ai-cr:review` dodana do PR-a uruchamia oba workflowy ponownie, ale na commicie scalającym, który GitHub policzył przy ostatniej zmianie PR-a; żeby recenzja objęła nowszy main, trzeba wypchnąć commit na gałąź PR-a.
 
+Kryteria i ich kotwice (co znaczy ocena 1, a co 10) są w `RUBRIC` w `reviewer/src/review-schema.ts`, ustalone 2026-10-24 na bazie kotwic z `m5l3-requirements.md`. Trzy różnice są celowe:
+- **Poprawność** ocenia zgodność z tym, co zmiana deklaruje: z tytułem i opisem, gdy są, a inaczej z kodem, komentarzami i testami. Opis PR-a dostaje tylko wariant 2; wariant 1 ma tytuł, diff i repo, a eval sam diff. Z tego samego powodu opis PR-a nie liczy się jako dokumentacja.
+- **Bezpieczeństwo** nie ma kotwicy o zależnościach ze znanymi podatnościami, bo żaden recenzent nie ma źródła CVE (wariant 1 nie ma WebFetch ani WebSearch, eval nie ma narzędzi). Jest za to kotwica o zależnościach, których zmiana nie potrzebuje.
+- **Dokumentacja** zamiast nieaktualnego README ocenia zmianę publicznego zachowania bez zmiany w dokumentacji, bo to widać w diffie.
+
+Próg werdyktu został bez zmian. Dodatkowy próg testRiskCoverage ≤ 4 nie zmieniłby żadnego werdyktu: na PR #3 każdy bieg i tak daje fail, a na PR #1 testRiskCoverage wynosi 7–8. Dodałby za to niestabilność przy ocenach na granicy.
+
 ## Komendy
 
 ```bash

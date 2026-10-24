@@ -51,15 +51,16 @@ function oneLine(text) {
 
 // The model writes what the diff under review steers it to, so its text is untrusted here. A zero-width space goes
 // after a `<` that starts raw HTML (a </details> that ends our block, an <h2> that fakes a verdict), before a line
-// that would be a heading, and after the @ of a mention, which then notifies nobody. Which backticks pair up into a
-// code span depends on the block structure around them, so this does not try to tell spans from prose: the space
-// renders as nothing inside code too.
+// that would be a heading, and after the @ of a mention or the & of an entity that spells @, which then notifies
+// nobody. Which backticks pair up into a code span depends on the block structure around them, so this does not
+// try to tell spans from prose: the space renders as nothing inside code too.
 function escapeProse(text) {
   return text
     .replace(/<(?=[A-Za-z/!?])/g, "<\u200b")
     .replace(ATX_HEADING, "$1\u200b")
     .replace(SETEXT_UNDERLINE, "$1\u200b")
-    .replace(/(^|[^\w])@(?=[A-Za-z0-9])/g, "$1@\u200b");
+    .replace(/(^|[^\w])@(?=[A-Za-z0-9])/g, "$1@\u200b")
+    .replace(/&(?=#0*64(?!\d)|#[xX]0*40(?![\dA-Fa-f])|commat;)/g, "&\u200b");
 }
 
 // Splits text into fenced blocks, kept as written, and the prose around them. Only when every line that could open

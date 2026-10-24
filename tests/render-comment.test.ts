@@ -176,6 +176,14 @@ describe("render-comment.mjs", () => {
       expect(out).toContain("Ask @\u200boctocat or @\u200bacme/reviewers; mail dev@example.com.");
     });
 
+    // GitHub decodes an entity into the text before it looks for mentions; other entities stay as written.
+    it("notifies nobody through an @ written as an HTML entity", () => {
+      const out = renderWith({ rationale: "Ask &#64;octocat, &#x40;hubot, &#064;a or &commat;acme; keep &amp; and &lt;." });
+      expect(out).toContain(
+        "Ask &\u200b#64;octocat, &\u200b#x40;hubot, &\u200b#064;a or &\u200bcommat;acme; keep &amp; and &lt;.",
+      );
+    });
+
     // gh pr comment fails on a body over 65,536 characters, before the labels are set.
     it("keeps the comment under GitHub's 65,536-character limit", () => {
       const out = renderWith({ rationale: "r".repeat(30_000), summary: "s".repeat(100_000) });

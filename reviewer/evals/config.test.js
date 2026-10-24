@@ -16,12 +16,12 @@ const javascriptAssertions = config.tests.flatMap((test) =>
   test.assert.filter((a) => a.type === "javascript").map((a) => [test.description, a.value]),
 );
 
+// The criterion names come from the contract, so the canned reviews follow a renamed or added criterion.
+const CRITERIA = JSON.parse(readFileSync(new URL("../schema/review-schema.json", import.meta.url), "utf8")).properties
+  .criteria.required;
+
 function review(verdict, score) {
-  const criteria = Object.fromEntries(
-    ["implementationCorrectness", "idiomaticity", "complexity", "testRiskCoverage", "documentation", "securitySafety"].map(
-      (name) => [name, { score, rationale: "r" }],
-    ),
-  );
+  const criteria = Object.fromEntries(CRITERIA.map((name) => [name, { score, rationale: "r" }]));
   return JSON.stringify({ criteria, verdict, summary: "s" });
 }
 

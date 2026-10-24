@@ -16,6 +16,23 @@ import { CRITERIA_KEYS, REVIEWER_PROMPT, ReviewResult, SCORE_RANGE } from "./rev
 /** The course default model (M5L2); REVIEW_MODEL or --model replaces it. */
 export const DEFAULT_MODEL = "z-ai/glm-5.3";
 
+/** OpenRouter request fields that pin a model to upstream providers and cap its reasoning (sent as written). */
+export interface OpenRouterRouting {
+  provider: { order: string[]; allow_fallbacks: false; require_parameters: true };
+  reasoning: { max_tokens: number };
+}
+
+// OpenRouter serves a model through many upstream providers and picks one per request by price. For glm-5.3 the
+// cheapest (fp4) reasoned for a few hundred tokens and reviewed shallowly, and another one reasoned until it hit the
+// output cap on one fixture (docs/comparison.md). A listed model goes only to its providers, in order, with reasoning
+// capped below the output; a model not listed is left to OpenRouter. eval.yml grades the same routing.
+export const MODEL_ROUTING: Record<string, OpenRouterRouting> = {
+  [DEFAULT_MODEL]: {
+    provider: { order: ["digitalocean", "sail-research"], allow_fallbacks: false, require_parameters: true },
+    reasoning: { max_tokens: 12_000 },
+  },
+};
+
 export interface ReviewOutcome {
   result: ReviewResult;
   usage: LanguageModelUsage;
@@ -23,6 +40,8 @@ export interface ReviewOutcome {
   costUsd: number | undefined;
   durationMs: number;
   model: string;
+  /** The upstream provider OpenRouter routed the review to, when it says. */
+  provider: string | undefined;
 }
 
 /** An OpenRouter model by id, e.g. "z-ai/glm-5.3" or "anthropic/claude-sonnet-5.5". */
@@ -31,6 +50,7 @@ export function openRouterModel(modelId: string, apiKey: string): LanguageModel 
 }
 
 export function createReviewer(model: LanguageModel) {
+  const routing = MODEL_ROUTING[modelIdOf(model)];
   return new ToolLoopAgent({
     model,
     instructions: REVIEWER_PROMPT,
@@ -40,7 +60,7 @@ export function createReviewer(model: LanguageModel) {
     stopWhen: isStepCount(2),
     temperature: 0,
     // OpenRouter reports the real cost of each step only when usage accounting is requested.
-    providerOptions: { openrouter: { usage: { include: true } } },
+    providerOptions: { openrouter: { usage: { include: true }, ...routing } },
   });
 }
 
@@ -52,6 +72,15 @@ function assertScores(result: ReviewResult): void {
       throw new Error(`criterion ${key} has score ${score}; expected an integer from ${SCORE_RANGE.min} to ${SCORE_RANGE.max}`);
     }
   }
+}
+
+function modelIdOf(model: LanguageModel): string {
+  return typeof model === "string" ? model : model.modelId;
+}
+
+function upstreamProvider(steps: readonly { providerMetadata: ProviderMetadata | undefined }[]): string | undefined {
+  const provider = steps.at(-1)?.providerMetadata?.openrouter?.provider;
+  return typeof provider === "string" && provider !== "" ? provider : undefined;
 }
 
 function stepCostUsd(metadata: ProviderMetadata | undefined): number | undefined {
@@ -81,6 +110,7 @@ export async function reviewDiff(input: ReviewInput, { model }: { model: Languag
     usage: totalUsage,
     costUsd: totalCostUsd(steps),
     durationMs: Math.round(performance.now() - started),
-    model: typeof model === "string" ? model : model.modelId,
+    model: modelIdOf(model),
+    provider: upstreamProvider(steps),
   };
 }

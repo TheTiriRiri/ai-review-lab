@@ -20,12 +20,13 @@ function diffFile(text: string): string {
 
 describe("runReview", () => {
   it("reviews the diff without the lockfile and reports the run in meta", async () => {
-    const model = mockModel(JSON.stringify(passingReview), { openrouter: { usage: { cost: 0.0031 } } });
+    const model = mockModel(JSON.stringify(passingReview), { openrouter: { usage: { cost: 0.0031 }, provider: "DigitalOcean" } });
     const report = await runReview({ diffSource: diffFile(SOURCE + LOCKFILE), title: "Add a", model });
     expect(report).toMatchObject({
       ...passingReview,
       meta: {
         model: "mock-model-id",
+        provider: "DigitalOcean",
         costUsd: 0.0031,
         inputTokens: 1200,
         outputTokens: 300,

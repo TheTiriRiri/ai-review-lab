@@ -21,6 +21,12 @@ describe("select", () => {
     );
   });
 
+  it("sorts by the given expression before the limit", () => {
+    expect(select("users").orderBy("created_at DESC").limit(10).build().sql).toBe(
+      "SELECT * FROM users ORDER BY created_at DESC LIMIT 10",
+    );
+  });
+
   it("rejects a limit that is not a positive integer", () => {
     expect(() => select("users").limit(0)).toThrow(/limit/);
     expect(() => select("users").limit(1.5)).toThrow(/limit/);

@@ -28,5 +28,10 @@ jobs:
         run: |
           version=$(node -p 'require("./.claude/.10x-ai-toolkit-manifest.json").version')
           npx --yes "@thetiririri/10x-ai-toolkit@$version" --force
-          drift=$(git status --porcelain -- .claude/skills CLAUDE.md .claude/.10x-ai-toolkit-manifest.json)
-          if [ -n "$drift" ]; then echo "$drift"; exit 1; fi
+          paths=(.claude/skills CLAUDE.md .claude/.10x-ai-toolkit-manifest.json)
+          drift=$(git status --porcelain -- "${paths[@]}")
+          if [ -n "$drift" ]; then
+            echo "$drift"
+            git diff -- "${paths[@]}"
+            exit 1
+          fi

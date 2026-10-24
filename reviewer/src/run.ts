@@ -24,7 +24,7 @@ export interface ReviewReport extends ReviewResult {
   meta: {
     model: string;
     durationMs: number;
-    costUsd: number;
+    costUsd: number | undefined;
     inputTokens: number | undefined;
     outputTokens: number | undefined;
     truncated: boolean;

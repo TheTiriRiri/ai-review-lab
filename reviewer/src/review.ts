@@ -20,7 +20,8 @@ try {
   const model = openRouterModel(process.env.REVIEW_MODEL || DEFAULT_MODEL, requireEnv("OPENROUTER_API_KEY"));
   const report = await runReview({ diffSource, title: process.env.PR_TITLE ?? "", body: process.env.PR_BODY, model, log });
   process.stdout.write(`${JSON.stringify(report)}\n`);
-  log(`verdict ${report.verdict} from ${report.meta.model} in ${report.meta.durationMs} ms, $${report.meta.costUsd}`);
+  const cost = report.meta.costUsd === undefined ? "cost n/a" : `$${report.meta.costUsd}`;
+  log(`verdict ${report.verdict} from ${report.meta.model} in ${report.meta.durationMs} ms, ${cost}`);
 } catch (error) {
   log(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;

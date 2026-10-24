@@ -62,6 +62,15 @@ describe("render-comment.mjs", () => {
     expect(out).toContain("cost: $0.0031");
   });
 
+  // The reviewer leaves costUsd out of meta when OpenRouter reports no cost; that is unknown, not free.
+  it("shows n/a as the cost when meta carries none", () => {
+    const dir = mkdtempSync(join(tmpdir(), "render-"));
+    const file = join(dir, "review.json");
+    const review = JSON.parse(readFileSync(FIXTURE, "utf8"));
+    writeFileSync(file, JSON.stringify({ ...review, meta: { model: "z-ai/glm-5.3", durationMs: 4210, costUsd: undefined } }));
+    expect(render(["--title", "T", file])).toContain("cost: n/a");
+  });
+
   it("notes when the scores overrule the model's own verdict, and only then", () => {
     const dir = mkdtempSync(join(tmpdir(), "render-"));
     const review = JSON.parse(readFileSync(FIXTURE, "utf8"));

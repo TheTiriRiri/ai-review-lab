@@ -19,7 +19,8 @@ export const DEFAULT_MODEL = "z-ai/glm-5.3";
 export interface ReviewOutcome {
   result: ReviewResult;
   usage: LanguageModelUsage;
-  costUsd: number;
+  /** Undefined when a step reports no cost: an unknown cost is not a free review. */
+  costUsd: number | undefined;
   durationMs: number;
   model: string;
 }
@@ -53,10 +54,20 @@ function assertScores(result: ReviewResult): void {
   }
 }
 
-function stepCostUsd(metadata: ProviderMetadata | undefined): number {
+function stepCostUsd(metadata: ProviderMetadata | undefined): number | undefined {
   const usage = metadata?.openrouter?.usage;
   const cost = typeof usage === "object" && usage !== null && "cost" in usage ? usage.cost : undefined;
-  return typeof cost === "number" ? cost : 0;
+  return typeof cost === "number" ? cost : undefined;
+}
+
+function totalCostUsd(steps: readonly { providerMetadata: ProviderMetadata | undefined }[]): number | undefined {
+  let total = 0;
+  for (const step of steps) {
+    const cost = stepCostUsd(step.providerMetadata);
+    if (cost === undefined) return undefined;
+    total += cost;
+  }
+  return total;
 }
 
 /** Reviews one pull request; rejects unless the model returns a review that matches the contract. */
@@ -68,7 +79,7 @@ export async function reviewDiff(input: ReviewInput, { model }: { model: Languag
   return {
     result,
     usage: totalUsage,
-    costUsd: steps.reduce((sum, step) => sum + stepCostUsd(step.providerMetadata), 0),
+    costUsd: totalCostUsd(steps),
     durationMs: Math.round(performance.now() - started),
     model: typeof model === "string" ? model : model.modelId,
   };

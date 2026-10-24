@@ -7,19 +7,21 @@
 description: Code review prompt, three models, four fixture diffs
 
 # The OpenRouter provider defaults to max_tokens 1024, which reasoning models spend before the JSON starts, and to
-# showThinking true, which prefixes the graded output with "Thinking: <reasoning>" (evals/config.test.js).
+# showThinking true, which prefixes the graded output with "Thinking: <reasoning>" (evals/config.test.js). glm-5.3
+# runs at temperature 0 as the reviewer agent sends it, since eval.yml gates on it.
 providers:
   - id: openrouter:z-ai/glm-5.3 # the variant 2 default
     config:
-      max_tokens: 16384
+      max_tokens: 32768
+      temperature: 0
       showThinking: false
   - id: openrouter:anthropic/claude-sonnet-5.5 # the model family variant 1 runs on
     config:
-      max_tokens: 16384
+      max_tokens: 32768
       showThinking: false
   - id: openrouter:deepseek/deepseek-v4.1-flash # the cheap candidate
     config:
-      max_tokens: 16384
+      max_tokens: 32768
       showThinking: false
   # Optional fourth: anthropic:messages:claude-sonnet-5-5 (ANTHROPIC_API_KEY), direct versus through OpenRouter.
 

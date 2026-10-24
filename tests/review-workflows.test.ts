@@ -147,6 +147,13 @@ describe(".github/workflows/eval.yml", () => {
   it("fails when any case fails", () => {
     expect(evalStep?.env?.PROMPTFOO_PASS_RATE_THRESHOLD).toBe("100");
   });
+
+  // gh run view --log shows no step summary; output tokens near max_tokens explain an empty review.
+  it("writes the per-case table, output tokens included, to the log as well as to the step summary", () => {
+    const summary = Object.values(workflow.jobs).flatMap((job) => job.steps).find((step) => step.name === "Summary");
+    expect(summary?.run).toContain('| tee -a "$GITHUB_STEP_SUMMARY"');
+    expect(summary?.run).toContain(".response.tokenUsage.completion");
+  });
 });
 
 describe(".github/workflows/review.yml", () => {

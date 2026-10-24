@@ -19,3 +19,7 @@ These rules come from the `@thetiririri/10x-ai-toolkit` package, which keeps the
 - Pin third-party GitHub Actions to a full commit SHA with the tag in a comment, as in `uses: actions/checkout@<sha> # v7.0.1`.
 - When a rule here conflicts with this repository's own instructions, the repository wins; say so and propose a change to the toolkit.
 <!-- END @thetiririri/10x-ai-toolkit -->
+
+## Project notes
+
+README.md describes the two review workflows; docs/comparison.md compares them on the fixture PRs #1 to #3, which stay open as examples.

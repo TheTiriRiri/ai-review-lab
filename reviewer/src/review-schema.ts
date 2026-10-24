@@ -63,7 +63,10 @@ export const VERDICT_RULE =
   `or securitySafety <= ${FAIL_AT.securitySafety}, or any criterion <= ${FAIL_AT.anyCriterion}; otherwise return pass.`;
 
 // Plain z.number(): Anthropic structured output rejects minimum and maximum, so the 1-10 range lives
-// in the descriptions and the prompt, and code that relies on it checks it after parsing.
+// in the descriptions and the prompt, and both variants check it after parsing: the agent in assertScores,
+// claude-review.yml through schema/verdict.jq.
+export const SCORE_RANGE = { min: 1, max: 10 } as const;
+
 export const ReviewCriterion = z.object({
   score: z.number().describe("Integer score from 1 (worst) to 10 (best)."),
   rationale: z.string().describe("Why this score was given: concrete findings with file paths and lines."),
@@ -134,12 +137,20 @@ export function renderSchemaFile(): string {
   return `${JSON.stringify(REVIEW_JSON_SCHEMA, null, 2)}\n`;
 }
 
-/** schema/verdict.jq: verdictFor as a jq program, which claude-review.yml loads from the base branch. */
+/**
+ * schema/verdict.jq: verdictFor as a jq program, which claude-review.yml loads from the base branch. A score that
+ * is not an integer in SCORE_RANGE stops it with an error, the jq counterpart of the agent's assertScores.
+ */
 export function renderVerdictFilter(): string {
+  const { min, max } = SCORE_RANGE;
   const scores = CRITERIA_KEYS.map((key) => `.criteria.${key}.score`).join(", ");
   return [
     "# Generated from reviewer/src/review-schema.ts by npm run schema:emit: the verdict VERDICT_RULE gives the scores.",
-    `if .criteria.implementationCorrectness.score <= ${FAIL_AT.implementationCorrectness}`,
+    "def check($key): .criteria[$key].score as $s",
+    `  | if ($s | type) == "number" and $s == ($s | floor) and $s >= ${min} and $s <= ${max} then .`,
+    `    else error("criterion \\($key) has score \\($s); expected an integer from ${min} to ${max}") end;`,
+    `${CRITERIA_KEYS.map((key) => `check("${key}")`).join(" | ")}`,
+    `| if .criteria.implementationCorrectness.score <= ${FAIL_AT.implementationCorrectness}`,
     `  or .criteria.securitySafety.score <= ${FAIL_AT.securitySafety}`,
     `  or ([${scores}] | min) <= ${FAIL_AT.anyCriterion}`,
     'then "fail" else "pass" end',

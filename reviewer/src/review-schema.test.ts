@@ -129,6 +129,21 @@ describe("schema/verdict.jq", () => {
     expect(fromJq).toHaveLength(4096);
     expect(fromJq).toEqual(grid.map(verdictFor));
   });
+
+  // The schema cannot carry minimum or maximum, so claude-code-action lets a score like 7.5 or 0 through; the
+  // workflow runs this filter with jq -er, and an error here stops the job as assertScores stops the agent.
+  it.each([7.5, 0, 11])("stops on a score of %s, naming the criterion", (score) => {
+    const criteria = Object.fromEntries(CRITERIA_KEYS.map((key) => [key, { score: 8, rationale: key }]));
+    criteria.idiomaticity = { score, rationale: "idiomaticity" };
+    const input = JSON.stringify({ criteria, verdict: "pass", summary: "" });
+    let stderr = "";
+    try {
+      execFileSync("jq", ["-er", "-f", filter], { input, encoding: "utf8", stdio: "pipe" });
+    } catch (error) {
+      stderr = String((error as { stderr?: string }).stderr);
+    }
+    expect(stderr).toContain(`criterion idiomaticity has score ${score}; expected an integer from 1 to 10`);
+  });
 });
 
 describe("renderEvalPrompt", () => {

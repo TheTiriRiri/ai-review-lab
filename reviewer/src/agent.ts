@@ -11,7 +11,7 @@ import {
 } from "ai";
 
 import { buildReviewPrompt, type ReviewInput } from "./prompts.js";
-import { CRITERIA_KEYS, REVIEWER_PROMPT, ReviewResult } from "./review-schema.js";
+import { CRITERIA_KEYS, REVIEWER_PROMPT, ReviewResult, SCORE_RANGE } from "./review-schema.js";
 
 /** The course default model (M5L2); REVIEW_MODEL or --model replaces it. */
 export const DEFAULT_MODEL = "z-ai/glm-5.3";
@@ -47,8 +47,8 @@ export function createReviewer(model: LanguageModel) {
 function assertScores(result: ReviewResult): void {
   for (const key of CRITERIA_KEYS) {
     const { score } = result.criteria[key];
-    if (!Number.isInteger(score) || score < 1 || score > 10) {
-      throw new Error(`criterion ${key} has score ${score}; expected an integer from 1 to 10`);
+    if (!Number.isInteger(score) || score < SCORE_RANGE.min || score > SCORE_RANGE.max) {
+      throw new Error(`criterion ${key} has score ${score}; expected an integer from ${SCORE_RANGE.min} to ${SCORE_RANGE.max}`);
     }
   }
 }

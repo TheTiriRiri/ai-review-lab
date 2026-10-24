@@ -40,7 +40,10 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: |
           mkdir -p .ai-review
-          git diff "origin/$BASE_REF...HEAD" -- . ':(exclude)package-lock.json' | head -c 200000 > .ai-review/pr.diff
+          # The cut of variant 2 (trimDiff in reviewer/src/diff.ts): the whole lines that fit in 200,000 bytes, so
+          # neither half a line nor half a character. mawk counts bytes; LC_ALL=C makes gawk count bytes too.
+          git diff "origin/$BASE_REF...HEAD" -- . ':(exclude)package-lock.json' \
+            | LC_ALL=C awk -v max=200000 '{ bytes += length($0) + 1; if (bytes > max) exit; print }' > .ai-review/pr.diff
           test -s .ai-review/pr.diff || { echo "::error::empty diff"; exit 1; }
           wc -c .ai-review/pr.diff
 

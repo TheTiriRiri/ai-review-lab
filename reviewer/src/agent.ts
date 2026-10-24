@@ -16,20 +16,18 @@ import { CRITERIA_KEYS, REVIEWER_PROMPT, ReviewResult, SCORE_RANGE } from "./rev
 /** The course default model (M5L2); REVIEW_MODEL or --model replaces it. */
 export const DEFAULT_MODEL = "z-ai/glm-5.3";
 
-/** OpenRouter request fields that pin a model to upstream providers and cap its reasoning (sent as written). */
+/** The OpenRouter request field that pins a model to upstream providers (sent as written). */
 export interface OpenRouterRouting {
   provider: { order: string[]; allow_fallbacks: false; require_parameters: true };
-  reasoning: { max_tokens: number };
 }
 
 // OpenRouter serves a model through many upstream providers and picks one per request by price. For glm-5.3 the
-// cheapest (fp4) reasoned for a few hundred tokens and reviewed shallowly, and another one reasoned until it hit the
-// output cap on one fixture (docs/comparison.md). A listed model goes only to its providers, in order, with reasoning
-// capped below the output; a model not listed is left to OpenRouter. eval.yml grades the same routing.
+// cheapest (fp4) reasoned for a few hundred tokens and reviewed shallowly (docs/comparison.md), so a listed model goes
+// only to its providers, in order; a model not listed is left to OpenRouter. eval.yml grades the same routing. No
+// reasoning cap: with reasoning.max_tokens set, glm-5.3 reasoned for under 200 tokens there too.
 export const MODEL_ROUTING: Record<string, OpenRouterRouting> = {
   [DEFAULT_MODEL]: {
     provider: { order: ["digitalocean", "sail-research"], allow_fallbacks: false, require_parameters: true },
-    reasoning: { max_tokens: 12_000 },
   },
 };
 

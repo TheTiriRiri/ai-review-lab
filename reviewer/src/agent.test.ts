@@ -41,14 +41,14 @@ describe("reviewDiff", () => {
 
   // OpenRouter spreads a model over many upstream providers and picks one per request by price; for glm-5.3 the
   // cheapest gave shallow reviews and another spent all output tokens on reasoning (docs/comparison.md).
-  it("sends the default model only to its pinned providers, with reasoning capped", async () => {
+  // A reasoning.max_tokens cap made glm-5.3 reason for under 200 tokens and review shallowly, so none is sent.
+  it("sends the default model only to its pinned providers, with reasoning left uncapped", async () => {
     const model = mockModel(JSON.stringify(review), undefined, DEFAULT_MODEL);
     await reviewDiff(input, { model });
     expect(model.doGenerateCalls[0]?.providerOptions).toEqual({
       openrouter: {
         usage: { include: true },
         provider: { order: ["digitalocean", "sail-research"], allow_fallbacks: false, require_parameters: true },
-        reasoning: { max_tokens: 12_000 },
       },
     });
     expect(MODEL_ROUTING[DEFAULT_MODEL]?.provider.order).toEqual(["digitalocean", "sail-research"]);

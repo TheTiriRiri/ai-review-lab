@@ -153,6 +153,9 @@ describe(".github/workflows/eval.yml", () => {
     const summary = Object.values(workflow.jobs).flatMap((job) => job.steps).find((step) => step.name === "Summary");
     expect(summary?.run).toContain('| tee -a "$GITHUB_STEP_SUMMARY"');
     expect(summary?.run).toContain(".response.tokenUsage.completion");
+    // The scores and the names of the failed assertions say why a case failed; the promptfoo table does not.
+    expect(summary?.run).toContain(".criteria[].score");
+    expect(summary?.run).toContain('select(.pass == false) | .assertion.type');
   });
 });
 

@@ -11,16 +11,16 @@ on:
 
 permissions: {}
 
-concurrency:
-  group: claude-review-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
-
 jobs:
   claude-review:
     # Same-repository pull requests only, and on `labeled` only for the ai-cr:review retry label.
     if: >-
       github.event.pull_request.head.repo.full_name == github.repository &&
       (github.event.action != 'labeled' || github.event.label.name == 'ai-cr:review')
+    # On the job, not the workflow: a run whose job an unrelated label skips must not cancel a review in progress.
+    concurrency:
+      group: claude-review-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

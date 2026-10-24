@@ -9,7 +9,7 @@ description: Code review prompt, three models, four fixture diffs
 # The OpenRouter provider defaults to max_tokens 1024, which reasoning models spend before the JSON starts, and to
 # showThinking true, which prefixes the graded output with "Thinking: <reasoning>" (evals/config.test.js). glm-5.3
 # runs as the reviewer agent sends it, since eval.yml gates on it: temperature 0 and the provider routing of
-# MODEL_ROUTING in src/agent.ts, with room for its longest reasoning (22,385 tokens on one fixture).
+# MODEL_ROUTING in src/agent.ts, with room for its longest review (30,415 output tokens on the fixture of PR 3).
 providers:
   - id: openrouter:z-ai/glm-5.3 # the variant 2 default
     config:

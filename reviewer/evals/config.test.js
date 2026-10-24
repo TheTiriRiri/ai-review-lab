@@ -13,7 +13,7 @@ const reviewers = config.providers;
 // thinking before the JSON starts. glm-5.3 used 14,125 of 16,384 on the fixture of PR 3 and in a CI run of eval.yml
 // returned an empty review on it; the reviewer agent sends no cap at all.
 const REVIEW_MAX_TOKENS = 32_768;
-// The gated model reasons for up to 22,385 tokens on a fixture and once ran out at 32,768.
+// The gated model used up to 30,415 output tokens on a fixture and once ran out at 32,768.
 const GATED_MAX_TOKENS = 65_536;
 const GRADER_MAX_TOKENS = 4_096;
 

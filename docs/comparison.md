@@ -7,7 +7,7 @@ The three fixture PRs from the plan (1e), reviewed on 2026-10-24 by both workflo
 
 Both return the same contract (`reviewer/schema/review-schema.json`). The binding `verdict` follows from the scores: fail when implementationCorrectness ≤ 5, securitySafety ≤ 4 or any criterion ≤ 3. In none of the twelve runs did the rule change the model's verdict (`verdict` = `modelVerdict`, no override note in the comments).
 
-All results below, both runs and the evals, were produced on the first version of the criteria anchors, from `m5l3-requirements.md`. The anchors changed later the same day (README, "Criteria and their anchors").
+Both review runs of the fixture PRs and every eval result except the gate runs on PR #4 were produced on the first version of the criteria anchors, from `m5l3-requirements.md`. The anchors changed later the same day in PR #4 (README, "Criteria and their anchors"), and the three eval bullets about that PR ("The gate on PR #4 and the diagnosis", "Reasoning cap", "The CI gate on PR #4") were run on the new ones.
 
 ## Results
 

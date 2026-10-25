@@ -6,14 +6,14 @@ import { join } from "node:path";
 import { load } from "js-yaml";
 import { describe, expect, it } from "vitest";
 
-const TRACKED = [".claude/skills", "CLAUDE.md", ".claude/.10x-ai-toolkit-manifest.json"];
+const TRACKED = [".claude/skills", "CLAUDE.md", ".claude/.ai-toolkit-manifest.json"];
 const SKILL = ".claude/skills/code-review/SKILL.md";
 
 interface Step {
   run?: string;
 }
 
-const workflowText = readFileSync(".github/workflows/10x-ai-toolkit-sync.yml", "utf8");
+const workflowText = readFileSync(".github/workflows/ai-toolkit-sync.yml", "utf8");
 const workflow = load(workflowText) as { jobs: { drift: { steps: Step[] } } };
 const driftScript = workflow.jobs.drift.steps.find((step) => step.run?.includes("npx"))?.run ?? "";
 
@@ -26,7 +26,7 @@ function runDriftStep(reinstall: string): { status: number | null; output: strin
     const repo = join(root, "repo");
     mkdirSync(bin);
     mkdirSync(join(repo, ".claude/skills/code-review"), { recursive: true });
-    writeFileSync(join(repo, ".claude/.10x-ai-toolkit-manifest.json"), '{ "version": "0.1.1" }\n');
+    writeFileSync(join(repo, ".claude/.ai-toolkit-manifest.json"), '{ "version": "0.2.0" }\n');
     writeFileSync(join(repo, SKILL), "installed\n");
     writeFileSync(join(repo, "CLAUDE.md"), "block\n");
     const git = (...args: string[]) => execFileSync("git", args, { cwd: repo, stdio: "ignore" });
@@ -50,7 +50,7 @@ function runDriftStep(reinstall: string): { status: number | null; output: strin
   }
 }
 
-describe(".github/workflows/10x-ai-toolkit-sync.yml", () => {
+describe(".github/workflows/ai-toolkit-sync.yml", () => {
   // npm reads NODE_AUTH_TOKEN only from the .npmrc that setup-node writes for this registry and scope.
   it("gives npm the package token through setup-node's registry and scope", () => {
     expect(workflowText).toContain("registry-url: https://npm.pkg.github.com");
@@ -61,7 +61,7 @@ describe(".github/workflows/10x-ai-toolkit-sync.yml", () => {
   // Without --force a locally edited skill is skipped and the drift never shows.
   it("reinstalls the version the manifest records, with --force, and passes when nothing changes", () => {
     const { status, npxArgs } = runDriftStep("");
-    expect(npxArgs).toBe("--yes @thetiririri/10x-ai-toolkit@0.1.1 --force");
+    expect(npxArgs).toBe("--yes @thetiririri/ai-toolkit@0.2.0 --force");
     expect(status).toBe(0);
   });
 

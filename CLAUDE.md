@@ -1,7 +1,11 @@
-<!-- BEGIN @thetiririri/10x-ai-toolkit -->
-# Working rules (@thetiririri/10x-ai-toolkit)
+## Project notes
 
-These rules come from the `@thetiririri/10x-ai-toolkit` package, which keeps them in this block of the file. To change them, edit `rules/CLAUDE.md` in the toolkit repository and publish a new version: edits inside the block are replaced on the next install. Notes outside the block are yours and survive every install.
+README.md describes the two review workflows; docs/comparison.md compares them on the fixture PRs #1 to #3, which stay open as examples.
+
+<!-- BEGIN @thetiririri/ai-toolkit -->
+# Working rules (@thetiririri/ai-toolkit)
+
+These rules come from the `@thetiririri/ai-toolkit` package, which keeps them in this block of the file. To change them, edit `rules/CLAUDE.md` in the toolkit repository and publish a new version: edits inside the block are replaced on the next install. Notes outside the block are yours and survive every install.
 
 ## Skills from this package
 
@@ -18,8 +22,4 @@ These rules come from the `@thetiririri/10x-ai-toolkit` package, which keeps the
 - Ask before every `git push`, `gh repo create`, `gh secret set` and `gh auth refresh`, one at a time, and above all before pushing a release tag: a published package version can never be reused.
 - Pin third-party GitHub Actions to a full commit SHA with the tag in a comment, as in `uses: actions/checkout@<sha> # v7.0.1`.
 - When a rule here conflicts with this repository's own instructions, the repository wins; say so and propose a change to the toolkit.
-<!-- END @thetiririri/10x-ai-toolkit -->
-
-## Project notes
-
-README.md describes the two review workflows; docs/comparison.md compares them on the fixture PRs #1 to #3, which stay open as examples.
+<!-- END @thetiririri/ai-toolkit -->

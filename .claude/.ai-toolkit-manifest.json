@@ -1,9 +1,9 @@
 {
-  "package": "@thetiririri/10x-ai-toolkit",
-  "version": "0.1.3",
+  "package": "@thetiririri/ai-toolkit",
+  "version": "0.2.0",
   "manifestVersion": 1,
   "mode": "copy",
-  "installedAt": "2026-10-25T11:48:47.137Z",
+  "installedAt": "2026-10-25T12:30:11.765Z",
   "files": {
     "skills": {
       "code-review": {
@@ -49,8 +49,8 @@
     },
     "rules": {
       "file": "CLAUDE.md",
-      "blockHash": "c424d6733780891cc986cf602bbb3d73a5b5d86d2f840aa9f4c0d70cbf1fc2d7",
-      "createdFile": true
+      "blockHash": "c8222b47d339c4c57958e15307e9710fa4039e5a8b1b831660d21cb71ab93dbf",
+      "createdFile": false
     }
   }
 }

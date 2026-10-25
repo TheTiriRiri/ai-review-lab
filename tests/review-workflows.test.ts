@@ -7,6 +7,7 @@ import { load } from "js-yaml";
 import { describe, expect, it } from "vitest";
 
 import { DEFAULT_MODEL } from "../reviewer/src/agent.js";
+import { CRITERIA_KEYS } from "../reviewer/src/review-schema.js";
 import { trimDiff } from "../reviewer/src/diff.js";
 import { EXCLUDE_GLOBS, MAX_DIFF_BYTES } from "../reviewer/src/run.js";
 
@@ -157,7 +158,7 @@ describe(".github/workflows/eval.yml", () => {
     expect(summary?.run).toContain('| tee -a "$GITHUB_STEP_SUMMARY"');
     expect(summary?.run).toContain(".response.tokenUsage.completion");
     // The scores and the names of the failed assertions say why a case failed; the promptfoo table does not.
-    expect(summary?.run).toContain(".criteria[].score");
+    expect(summary?.run).toContain(".criteria[$order[]].score");
     expect(summary?.run).toContain('select(.pass == false) | .assertion.type');
   });
 
@@ -171,12 +172,19 @@ describe(".github/workflows/eval.yml", () => {
     expect(upload?.with?.path).toBe("reviewer/evals/out/results.json");
   });
 
-  // With a json_schema response_format promptfoo parses the output, so results.json holds an object, not a string.
-  it("reads the scores whether promptfoo kept the output as text or parsed it", () => {
+  // With a json_schema response_format promptfoo parses the output, so results.json holds an object, not a string,
+  // and its keys come out in alphabetical order; the table must still list the scores in the order of the contract.
+  it("reads the scores whether promptfoo kept the output as text or parsed it, in contract order", () => {
     const summary = Object.values(workflow.jobs).flatMap((job) => job.steps).find((step) => step.name === "Summary");
-    const program = summary?.run?.match(/jq -r '([^']+)'/)?.[1];
-    expect(program).toBeDefined();
-    const review = { criteria: Object.fromEntries(["a", "b", "c"].map((k, i) => [k, { score: i + 1, rationale: "r" }])) };
+    const match = summary?.run?.match(/jq -r --slurpfile schema (\S+) '([^']+)'/);
+    const schemaFile = match?.[1] ?? "";
+    const program = match?.[2] ?? "";
+    expect(program).not.toBe("");
+    const order = JSON.parse(readFileSync(schemaFile, "utf8")).properties.criteria.required as string[];
+    expect(order).toEqual(CRITERIA_KEYS);
+    const review = {
+      criteria: Object.fromEntries([...order].sort().map((key) => [key, { score: order.indexOf(key) + 1, rationale: "r" }])),
+    };
     const row = (output: unknown) => ({
       testCase: { description: "case" },
       success: true,
@@ -188,8 +196,9 @@ describe(".github/workflows/eval.yml", () => {
     try {
       const file = join(dir, "results.json");
       writeFileSync(file, JSON.stringify({ results: { results: [row(JSON.stringify(review)), row(review), row("plain text")] } }));
-      const table = execFileSync("jq", ["-r", program ?? "", file], { encoding: "utf8" }).trim().split("\n");
-      expect(table.map((line) => line.split(" | ")[3])).toEqual(["1/2/3", "1/2/3", "not JSON"]);
+      const args = ["-r", "--slurpfile", "schema", schemaFile, program, file];
+      const table = execFileSync("jq", args, { encoding: "utf8" }).trim().split("\n");
+      expect(table.map((line) => line.split(" | ")[3])).toEqual(["1/2/3/4/5/6", "1/2/3/4/5/6", "not JSON"]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

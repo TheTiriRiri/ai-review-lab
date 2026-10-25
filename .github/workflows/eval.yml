@@ -61,10 +61,11 @@ jobs:
         run: |
           # Also to the log, which gh run view shows. Output tokens near max_tokens explain an empty review; the scores
           # and the failed assertions say why a case failed, which the promptfoo table does not. With a json_schema
-          # response_format promptfoo parses the output, so .response.output is an object, not a string, in results.json.
+          # response_format promptfoo parses the output, so .response.output is an object, not a string, in results.json,
+          # with its keys in alphabetical order; the scores are printed in the order of the contract, as everywhere else.
           {
             echo "| case | result | failed | scores | output tokens | cost | time |"
             echo "| --- | --- | --- | --- | --- | --- | --- |"
-            jq -r '.results.results[] | "| \(.testCase.description) | \(if .success then "pass" else "fail" end) | \([.gradingResult.componentResults[]? | select(.pass == false) | .assertion.type] | join(", ")) | \(.response.output | (if type == "string" then (try fromjson catch null) else . end) | if type == "object" then [.criteria[].score] | map(tostring) | join("/") else "not JSON" end) | \(.response.tokenUsage.completion // "n/a") | \(.response.cost | if . == null then "n/a" else "$\(. * 10000 | round / 10000)" end) | \(.latencyMs / 1000 | round) s |"' \
+            jq -r --slurpfile schema reviewer/schema/review-schema.json '$schema[0].properties.criteria.required as $order | .results.results[] | "| \(.testCase.description) | \(if .success then "pass" else "fail" end) | \([.gradingResult.componentResults[]? | select(.pass == false) | .assertion.type] | join(", ")) | \(.response.output | (if type == "string" then (try fromjson catch null) else . end) | if type == "object" then [.criteria[$order[]].score] | map(tostring) | join("/") else "not JSON" end) | \(.response.tokenUsage.completion // "n/a") | \(.response.cost | if . == null then "n/a" else "$\(. * 10000 | round / 10000)" end) | \(.latencyMs / 1000 | round) s |"' \
               reviewer/evals/out/results.json
           } | tee -a "$GITHUB_STEP_SUMMARY"

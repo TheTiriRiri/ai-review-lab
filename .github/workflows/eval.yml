@@ -1,6 +1,7 @@
 # Regression gate for the review prompt: the promptfoo eval (reviewer/evals/) on the model variant 2 reviews with, on
 # pull requests that change what the eval grades and on demand. A run costs about $0.15-0.40 on OpenRouter and takes
-# a few minutes; a grader that misjudges a good review once is cleared by running it again.
+# a few minutes; a grader that misjudges a good review once is cleared by running it again. A failed run keeps
+# reviewer/evals/out/results.json, with the raw model outputs, as the artifact promptfoo-results.
 name: Prompt eval
 
 on:
@@ -46,14 +47,24 @@ jobs:
           jq -e '.results.results | length > 0' reviewer/evals/out/results.json > /dev/null \
             || { echo "::error::the eval ran no cases"; exit 1; }
 
+      # The table below says which assertion failed, not what the model returned; that is in results.json.
+      - name: Keep the raw results of a failed run
+        if: failure() && hashFiles('reviewer/evals/out/results.json') != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: promptfoo-results
+          path: reviewer/evals/out/results.json
+          retention-days: 14
+
       - name: Summary
         if: always() && hashFiles('reviewer/evals/out/results.json') != ''
         run: |
           # Also to the log, which gh run view shows. Output tokens near max_tokens explain an empty review; the scores
-          # and the failed assertions say why a case failed, which the promptfoo table does not.
+          # and the failed assertions say why a case failed, which the promptfoo table does not. With a json_schema
+          # response_format promptfoo parses the output, so .response.output is an object, not a string, in results.json.
           {
             echo "| case | result | failed | scores | output tokens | cost | time |"
             echo "| --- | --- | --- | --- | --- | --- | --- |"
-            jq -r '.results.results[] | "| \(.testCase.description) | \(if .success then "pass" else "fail" end) | \([.gradingResult.componentResults[]? | select(.pass == false) | .assertion.type] | join(", ")) | \(.response.output | (try fromjson catch null) | if type == "object" then [.criteria[].score] | map(tostring) | join("/") else "not JSON" end) | \(.response.tokenUsage.completion // "n/a") | \(.response.cost | if . == null then "n/a" else "$\(. * 10000 | round / 10000)" end) | \(.latencyMs / 1000 | round) s |"' \
+            jq -r '.results.results[] | "| \(.testCase.description) | \(if .success then "pass" else "fail" end) | \([.gradingResult.componentResults[]? | select(.pass == false) | .assertion.type] | join(", ")) | \(.response.output | (if type == "string" then (try fromjson catch null) else . end) | if type == "object" then [.criteria[].score] | map(tostring) | join("/") else "not JSON" end) | \(.response.tokenUsage.completion // "n/a") | \(.response.cost | if . == null then "n/a" else "$\(. * 10000 | round / 10000)" end) | \(.latencyMs / 1000 | round) s |"' \
               reviewer/evals/out/results.json
           } | tee -a "$GITHUB_STEP_SUMMARY"

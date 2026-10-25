@@ -125,7 +125,10 @@ describe(".github/workflows/claude-review.yml", () => {
 describe(".github/workflows/eval.yml", () => {
   const workflow = load(readFileSync(".github/workflows/eval.yml", "utf8")) as {
     on: { pull_request?: { paths?: string[] }; workflow_dispatch?: unknown };
-    jobs: Record<string, { steps: { name?: string; run?: string; env?: Record<string, string> }[] }>;
+    jobs: Record<
+      string,
+      { steps: { name?: string; run?: string; env?: Record<string, string>; uses?: string; if?: string; with?: Record<string, string> }[] }
+    >;
   };
   const evalStep = Object.values(workflow.jobs).flatMap((job) => job.steps).find((step) => step.name === "Eval");
 
@@ -156,6 +159,40 @@ describe(".github/workflows/eval.yml", () => {
     // The scores and the names of the failed assertions say why a case failed; the promptfoo table does not.
     expect(summary?.run).toContain(".criteria[].score");
     expect(summary?.run).toContain('select(.pass == false) | .assertion.type');
+  });
+
+  // The table says which assertion failed, not what the model returned; the raw output is in results.json.
+  it("keeps results.json as an artifact when the gate fails", () => {
+    const upload = Object.values(workflow.jobs)
+      .flatMap((job) => job.steps)
+      .find((step) => step.uses?.startsWith("actions/upload-artifact@"));
+    expect(upload?.uses).toMatch(/^actions\/upload-artifact@[0-9a-f]{40}$/);
+    expect(upload?.if).toContain("failure()");
+    expect(upload?.with?.path).toBe("reviewer/evals/out/results.json");
+  });
+
+  // With a json_schema response_format promptfoo parses the output, so results.json holds an object, not a string.
+  it("reads the scores whether promptfoo kept the output as text or parsed it", () => {
+    const summary = Object.values(workflow.jobs).flatMap((job) => job.steps).find((step) => step.name === "Summary");
+    const program = summary?.run?.match(/jq -r '([^']+)'/)?.[1];
+    expect(program).toBeDefined();
+    const review = { criteria: Object.fromEntries(["a", "b", "c"].map((k, i) => [k, { score: i + 1, rationale: "r" }])) };
+    const row = (output: unknown) => ({
+      testCase: { description: "case" },
+      success: true,
+      gradingResult: { componentResults: [] },
+      response: { output, tokenUsage: { completion: 10 }, cost: 0.01 },
+      latencyMs: 1000,
+    });
+    const dir = mkdtempSync(join(tmpdir(), "eval-summary-"));
+    try {
+      const file = join(dir, "results.json");
+      writeFileSync(file, JSON.stringify({ results: { results: [row(JSON.stringify(review)), row(review), row("plain text")] } }));
+      const table = execFileSync("jq", ["-r", program ?? "", file], { encoding: "utf8" }).trim().split("\n");
+      expect(table.map((line) => line.split(" | ")[3])).toEqual(["1/2/3", "1/2/3", "not JSON"]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

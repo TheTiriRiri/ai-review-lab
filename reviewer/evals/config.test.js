@@ -70,4 +70,17 @@ describe("promptfoo config", () => {
     expect(typeof onFail).toBe("boolean");
     expect(onFail).not.toBe(onPass);
   });
+
+  // Variant 2 sends the contract as a strict json_schema response_format (Output.object in agent.ts), so the upstream
+  // provider constrains the output to it. Graded on the prompt alone, about one glm-5.3 review in four was not JSON:
+  // a placeholder left in the object ("score":catch-me), so the gate failed on reviews variant 2 would never return.
+  it("requests the contract as the structured output of variant 2, from the schema file is-json validates against", () => {
+    const gated = reviewers.find((p) => p.id === `openrouter:${DEFAULT_MODEL}`);
+    const schemaFiles = new Set(config.tests.flatMap((t) => t.assert.filter((a) => a.type === "is-json").map((a) => a.value)));
+    expect([...schemaFiles]).toHaveLength(1);
+    expect(gated?.config?.response_format).toEqual({
+      type: "json_schema",
+      json_schema: { name: "review", strict: true, schema: [...schemaFiles][0] },
+    });
+  });
 });

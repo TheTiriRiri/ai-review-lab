@@ -60,7 +60,15 @@ describe("addBusinessDays", () => {
     expect(start.toISOString()).toBe("2026-10-22T00:00:00.000Z");
   });
 
-  it("rejects a negative count", () => {
-    expect(() => addBusinessDays(parseIsoDate("2026-10-22"), -1)).toThrow(/negative/);
+  it("steps back over the weekend for a negative count", () => {
+    expect(addBusinessDays(parseIsoDate("2026-10-26"), -1).toISOString()).toBe("2026-10-23T00:00:00.000Z");
+  });
+
+  it("subtracts five business days across one weekend", () => {
+    expect(addBusinessDays(parseIsoDate("2026-10-28"), -5).toISOString()).toBe("2026-10-21T00:00:00.000Z");
+  });
+
+  it("counts back to the previous Friday from a weekend start", () => {
+    expect(addBusinessDays(parseIsoDate("2026-10-25"), -1).toISOString()).toBe("2026-10-23T00:00:00.000Z");
   });
 });

@@ -27,15 +27,17 @@ function isWeekend(date: Date): boolean {
   return day === 0 || day === 6;
 }
 
-/** Adds `days` business days (Monday to Friday) to `start`, returning a new date. */
+/**
+ * Adds `days` business days (Monday to Friday) to `start`, returning a new date.
+ * A negative count steps backward. Weekend days are skipped in both directions, so from a
+ * weekend start one business day forward is the next Monday and one back is the previous Friday.
+ */
 export function addBusinessDays(start: Date, days: number): Date {
-  if (days < 0) {
-    throw new Error(`days must not be negative, got ${days}`);
-  }
+  const step = days < 0 ? -1 : 1;
   const result = new Date(start.getTime());
-  let remaining = days;
+  let remaining = Math.abs(days);
   while (remaining > 0) {
-    result.setUTCDate(result.getUTCDate() + 1);
+    result.setUTCDate(result.getUTCDate() + step);
     if (!isWeekend(result)) {
       remaining -= 1;
     }

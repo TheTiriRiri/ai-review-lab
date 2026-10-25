@@ -19,7 +19,7 @@ interface Anchors {
   best: string;
 }
 
-// Score anchors agreed with the user on 2026-10-24, starting from those in m5l3-requirements.md. No text in this file
+// Score anchors agreed with the user on 2026-10-24, starting from those in the course material for this module. No text in this file
 // may contain an apostrophe: the JSON schema reaches claude-code-action inside single quotes (claude_args --json-schema).
 const RUBRIC: Record<CriterionKey, Anchors> = {
   implementationCorrectness: {

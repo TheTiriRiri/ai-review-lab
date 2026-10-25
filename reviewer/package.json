@@ -1,5 +1,5 @@
 {
-  "name": "@10x-ai-review-lab/reviewer",
+  "name": "@ai-review-lab/reviewer",
   "version": "0.1.0",
   "private": true,
   "description": "Code review agent: one review contract shared by both CI variants and the evals",

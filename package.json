@@ -1,5 +1,5 @@
 {
-  "name": "10x-ai-review-lab",
+  "name": "ai-review-lab",
   "version": "0.1.0",
   "private": true,
   "description": "Sandbox for AI code review pipelines on GitHub Actions (10xDevs module 5)",

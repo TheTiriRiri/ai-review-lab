@@ -1,51 +1,51 @@
-# 10x-ai-review-lab
+# ai-review-lab
 
-Piaskownica do pipeline'ów AI code review na GitHub Actions (10xDevs, moduł 5, ścieżka A odznaki 10xChampion).
+A sandbox for AI code review pipelines on GitHub Actions (10xDevs, module 5, path A of the 10xChampion badge).
 
-Mały projekt TypeScript (`src/`) z testami Vitest (`tests/`) istnieje po to, żeby było co recenzować. Dwa workflowy recenzują te same pull requesty i są porównywane na tych samych PR-ach:
+A small TypeScript project (`src/`) with Vitest tests (`tests/`) exists so there is something to review. Two workflows review the same pull requests and are compared on the same PRs:
 
-| Workflow | Recenzent | Etykiety | Sekret |
+| Workflow | Reviewer | Labels | Secret |
 | --- | --- | --- | --- |
-| `.github/workflows/claude-review.yml` | `anthropics/claude-code-action` (gotowiec), prompt z sześcioma kryteriami i wymuszonym schematem werdyktu | `claude-cr:passed` / `claude-cr:failed` | `CLAUDE_CODE_OAUTH_TOKEN` |
-| `.github/workflows/review.yml` | własny agent w `reviewer/` (Vercel AI SDK + OpenRouter) przez composite action `.github/actions/ai-reviewer` | `ai-cr:passed` / `ai-cr:failed` | `OPENROUTER_API_KEY` |
+| `.github/workflows/claude-review.yml` | `anthropics/claude-code-action` (off the shelf), a prompt with six criteria and an enforced verdict schema | `claude-cr:passed` / `claude-cr:failed` | `CLAUDE_CODE_OAUTH_TOKEN` |
+| `.github/workflows/review.yml` | a custom agent in `reviewer/` (Vercel AI SDK + OpenRouter) through the composite action `.github/actions/ai-reviewer` | `ai-cr:passed` / `ai-cr:failed` | `OPENROUTER_API_KEY` |
 
-Oba czytają ten sam kontrakt werdyktu (`reviewer/schema/review-schema.json`): sześć kryteriów ocenianych 1–10 z uzasadnieniem, `verdict: pass | fail` i `summary` w Markdown. Wiążący werdykt, który czyta bramka, wynika z ocen według reguły kontraktu: w wariancie 1 jest to `reviewer/schema/verdict.jq` z gałęzi bazowej, w wariancie 2 `verdictFor`. Werdykt samego modelu zostaje w `modelVerdict`, a komentarz zaznacza, gdy reguła go zmieniła. Tekst modelu w komentarzu jest nieufny, więc `.github/scripts/render-comment.mjs` wstawia niewidoczny znak zero-width space (U+200B) po `<` przed tagiem, przed linią nagłówka i po `@` wzmianki; kod inline i bloki kodu zagnieżdżone w liście lub cytacie skopiowane z komentarza zawierają ten znak. Etykieta `ai-cr:review` dodana do PR-a uruchamia oba workflowy ponownie, ale na commicie scalającym, który GitHub policzył przy ostatniej zmianie PR-a; żeby recenzja objęła nowszy main, trzeba wypchnąć commit na gałąź PR-a.
+Both read the same verdict contract (`reviewer/schema/review-schema.json`): six criteria scored 1–10 with a rationale, `verdict: pass | fail` and a Markdown `summary`. The binding verdict the gate reads follows from the scores by the contract's rule: in variant 1 that is `reviewer/schema/verdict.jq` from the base branch, in variant 2 `verdictFor`. The model's own verdict stays in `modelVerdict`, and the comment notes when the rule changed it. Model text in the comment is untrusted, so `.github/scripts/render-comment.mjs` inserts an invisible zero-width space (U+200B) after the `<` of a tag, before a heading line and after the `@` of a mention; inline code, and code blocks nested in a list or a quote, copied from the comment contain that character. The `ai-cr:review` label added to a PR runs both workflows again, but on the merge commit GitHub computed at the PR's last change; for the review to cover a newer main, push a commit to the PR branch.
 
-Kryteria i ich kotwice (co znaczy ocena 1, a co 10) są w `RUBRIC` w `reviewer/src/review-schema.ts`, ustalone 2026-10-24 na bazie kotwic z `m5l3-requirements.md`. Trzy różnice są celowe:
-- **Poprawność** ocenia zgodność z tym, co zmiana deklaruje: z tytułem i opisem, gdy są, a inaczej z kodem, komentarzami i testami. Opis PR-a dostaje tylko wariant 2; wariant 1 ma tytuł, diff i repo, a eval sam diff. Z tego samego powodu opis PR-a nie liczy się jako dokumentacja.
-- **Bezpieczeństwo** nie ma kotwicy o zależnościach ze znanymi podatnościami, bo żaden recenzent nie ma źródła CVE (wariant 1 nie ma WebFetch ani WebSearch, eval nie ma narzędzi). Jest za to kotwica o zależnościach, których zmiana nie potrzebuje.
-- **Dokumentacja** zamiast nieaktualnego README ocenia zmianę publicznego zachowania bez zmiany w dokumentacji, bo to widać w diffie.
+Criteria and their anchors (what a score of 1 means and what a 10 means) are in `RUBRIC` in `reviewer/src/review-schema.ts`, agreed on 2026-10-24 from the anchors in `m5l3-requirements.md`. Three differences are deliberate:
+- **Correctness** scores agreement with what the change claims: with the title and description when there are any, otherwise with the code, comments and tests. Only variant 2 gets the PR description; variant 1 has the title, the diff and the repo, and the eval the diff alone. For the same reason the PR description does not count as documentation.
+- **Security** has no anchor about dependencies with known vulnerabilities, because no reviewer has a CVE source (variant 1 has no WebFetch or WebSearch, the eval has no tools). It has an anchor about dependencies the change does not need instead.
+- **Documentation** scores a change in public behaviour with no change to the docs instead of an outdated README, because that shows in the diff.
 
-Próg werdyktu został bez zmian. Dodatkowy próg testRiskCoverage ≤ 4 nie zmieniłby żadnego werdyktu: na PR #3 każdy bieg i tak daje fail, a na PR #1 testRiskCoverage wynosi 7–8. Dodałby za to niestabilność przy ocenach na granicy.
+The verdict threshold stayed unchanged. An extra threshold of testRiskCoverage ≤ 4 would not change any verdict: on PR #3 every run fails anyway, and on PR #1 testRiskCoverage is 7–8. It would, however, add instability for scores at the boundary.
 
-## Komendy
+## Commands
 
 ```bash
 npm install
 npm test
 npm run typecheck
-npm run schema:emit   # po każdej zmianie reviewer/src/review-schema.ts; test dryfu pilnuje plików w reviewer/schema/ i reviewer/evals/prompts/
+npm run schema:emit   # after every change to reviewer/src/review-schema.ts; a drift test guards the files in reviewer/schema/ and reviewer/evals/prompts/
 ```
 
-## Recenzent wariantu 2 (`reviewer/`)
+## Variant 2 reviewer (`reviewer/`)
 
 ```bash
-git diff main | npm run review                                    # diff ze stdin
-npm run review -- --file reviewer/fixtures/sample.diff            # albo z pliku; --model <id OpenRouter>, --title <tekst>
-npm run review -- --file x.diff --fail-on-verdict                 # kod wyjścia 1 przy verdict: fail
-npm run build                                                     # reviewer/dist/, którego używa composite action
+git diff main | npm run review                                    # diff from stdin
+npm run review -- --file reviewer/fixtures/sample.diff            # or from a file; --model <OpenRouter id>, --title <text>
+npm run review -- --file x.diff --fail-on-verdict                 # exit code 1 on verdict: fail
+npm run build                                                     # reviewer/dist/, which the composite action uses
 ```
 
-Klucz `OPENROUTER_API_KEY` w `reviewer/.env` (gitignorowany) albo w środowisku; domyślny model to `z-ai/glm-5.3` (`REVIEW_MODEL` lub `--model` go podmienia). Na stdout trafia jeden JSON: sześć ocen, `verdict` (z reguły), `modelVerdict`, `summary` i `meta` (model, czas, koszt z OpenRouter, tokeny, wykluczone pliki); logi idą na stderr. Testy agenta (`npm test`) używają atrapy modelu z `ai/test` i nie wykonują żadnych zapytań HTTP.
+The `OPENROUTER_API_KEY` key goes in `reviewer/.env` (gitignored) or in the environment; the default model is `z-ai/glm-5.3` (`REVIEW_MODEL` or `--model` overrides it). Stdout gets one JSON object: six scores, `verdict` (from the rule), `modelVerdict`, `summary` and `meta` (model, duration, cost from OpenRouter, tokens, excluded files); logs go to stderr. The agent tests (`npm test`) use a mock model from `ai/test` and make no HTTP requests.
 
-OpenRouter obsługuje jeden model przez wielu dostawców i wybiera ich według ceny, a dla glm-5.3 jakość recenzji zależała od tego wyboru. Dlatego `MODEL_ROUTING` w `reviewer/src/agent.ts` przypina glm-5.3 do DigitalOcean, zapasowo Sail Research. Reasoning nie ma limitu, bo z `reasoning.max_tokens` glm-5.3 myślał krócej niż 200 tokenów i recenzował płytko. Gdy obaj są niedostępni, recenzja kończy się błędem zamiast trafić do innego dostawcy. `meta.provider` podaje, kto recenzował. Model spoza mapy idzie przez domyślny routing OpenRouter. Eval używa tej samej konfiguracji, a test pilnuje, żeby się zgadzała.
+OpenRouter serves one model through many providers and picks them by price, and for glm-5.3 the review quality depended on that choice. That is why `MODEL_ROUTING` in `reviewer/src/agent.ts` pins glm-5.3 to DigitalOcean, with Sail Research as the fallback. Reasoning has no cap, because with `reasoning.max_tokens` glm-5.3 thought for under 200 tokens and reviewed shallowly. When both providers are unavailable, the review fails instead of going to another provider. `meta.provider` says who served the review. A model outside the map goes through OpenRouter's default routing. The eval uses the same configuration, and a test checks that the two match.
 
-## Evale promptfoo (`reviewer/evals/`)
+## promptfoo evals (`reviewer/evals/`)
 
 ```bash
-npm run eval   # prompt recenzenta na trzech modelach OpenRouter i czterech fixturach; macierz w terminalu, wynik w reviewer/evals/out/results.json
+npm run eval   # the reviewer prompt on three OpenRouter models and four fixtures; matrix in the terminal, result in reviewer/evals/out/results.json
 ```
 
-Prompt (`reviewer/evals/prompts/review.txt`) generuje `schema:emit` z tego samego źródła co kontrakt CI. Klucz jak wyżej, z `reviewer/.env`; promptfoo czyta ten plik sam. Fixtury w `reviewer/evals/fixtures/` nie mogą zawierać `{{`, `{%` ani `{#`, bo promptfoo renderuje zmienne jako szablony Nunjucks; pilnuje tego test. Wyników nie oglądamy przez `promptfoo view`, bo uruchamia lokalny serwer WWW.
+The prompt (`reviewer/evals/prompts/review.txt`) is generated by `schema:emit` from the same source as the CI contract. The key is read as above, from `reviewer/.env`; promptfoo reads that file itself. Fixtures in `reviewer/evals/fixtures/` must not contain `{{`, `{%` or `{#`, because promptfoo renders variables as Nunjucks templates; a test guards this. Results are not viewed with `promptfoo view`, because it starts a local web server.
 
-Ten sam eval jest bramką regresji w CI. `.github/workflows/eval.yml` uruchamia go na PR-ach, które zmieniają `reviewer/src/review-schema.ts`, `reviewer/schema/` albo `reviewer/evals/`, oraz ręcznie (`workflow_dispatch`). Bramka ocenia tylko model wariantu 2 (`z-ai/glm-5.3`) i wymaga zaliczenia wszystkich przypadków; dwa pozostałe modele zostają do ręcznego porównania. Bieg trwa kilka minut i kosztuje ok. $0.15–0.40, a pojedynczą pomyłkę gradera usuwa ponowny bieg.
+The same eval is a regression gate in CI. `.github/workflows/eval.yml` runs it on PRs that change `reviewer/src/review-schema.ts`, `reviewer/schema/` or `reviewer/evals/`, and manually (`workflow_dispatch`). The gate scores only the variant 2 model (`z-ai/glm-5.3`) and requires every case to pass; the other two models remain for manual comparison. A run takes a few minutes and costs about $0.15–0.40, and a single grader mistake is cleared by running it again.
